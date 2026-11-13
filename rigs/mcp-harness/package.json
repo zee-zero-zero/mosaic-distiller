@@ -1,0 +1,17 @@
+{
+  "name": "@mosaic-distiller/mcp-harness",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "description": "Test harness: starts an MCP server as a child process the way MosAIc does and talks to it over stdio.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.28.0"
+  }
+}

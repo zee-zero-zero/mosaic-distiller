@@ -1,0 +1,19 @@
+{
+  "name": "@mosaic-distiller/server",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "description": "The distiller as an MCP server over stdio: two tools, distill and capabilities.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "node ../../scripts/build-server.mjs"
+  },
+  "dependencies": {
+    "@mosaic-distiller/core": "0.1.0",
+    "@modelcontextprotocol/sdk": "1.28.0"
+  },
+  "devDependencies": {
+    "@mosaic-distiller/mcp-harness": "0.1.0"
+  }
+}

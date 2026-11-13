@@ -48,7 +48,7 @@ first needs it.
 | Determinism check | REP-4: a test fails if `packages/core/src` uses `Date`, `Math.random`, `toLocaleLowerCase`, `toLocaleUpperCase`, `localeCompare`, `Intl`, `\d`, `\w`, `\s` or `\b`. The one exception is `src/pattern/subset.ts`, which must name those escapes in order to refuse them. Sorting compares code points. | §5.9 | 1 |
 | Case coverage check | REP-5: a test reads every case id in `docs/spec/05-testing.md` and fails if any id has no test whose name starts with it. The exception is ids listed in `scripts/case-ids-pending.txt`. That file shrinks with each commit and is deleted in commit 3. | §5.9 | 1 |
 | Deadline mechanism | The engine runs in a `worker_threads` worker. When a call passes 20 seconds, the server terminates that worker, answers `DEADLINE` and starts a new one. A synchronous engine cannot be interrupted in the same thread. | §4.5 | 2 |
-| Outbound neutralisation strings | In every text the server returns, `<use_tool` becomes `[neutralised: use_tool]`, `<mosaic_ui` becomes `[neutralised: mosaic_ui]`, and `__payment_required` (with or without quotes) becomes `[neutralised: payment_required]`. None of these contains `"` or `\`, so a JSON text stays valid JSON. MosAIc opens a payment screen when a tool result's first text block contains `"__payment_required"` (with the quotes) and parses as JSON with that key set. | §4.5 | 2 |
+| Outbound neutralisation strings | In every text the server returns, `<use_tool` becomes `[neutralised: use_tool]`, `<mosaic_ui` becomes `[neutralised: mosaic_ui]`, and `__payment_required` becomes `[neutralised: payment_required]`, in any case of letters; quotes round the payment key stay, so that JSON stays valid and no longer holds `"__payment_required"` (as built; §7.1). None of these contains `"` or `\`. MosAIc opens a payment screen when a tool result's first text block contains `"__payment_required"` (with the quotes) and parses as JSON with that key set. | §4.5 | 2 |
 | Start-up failure on stderr | One line: `DISTILLER_START_FAILED <code>`, where `<code>` is a loader code. Nothing else. | §4.1 | 2 |
 | Test-only server entry | `packages/server/src/test-entry.ts`, built to `dist/test-entry.mjs`. It adds the hooks that SRV-2 and SRV-8 need. The installer never copies it. | §5.6 | 2 |
 | MosAIc's settings directory on Linux | `$XDG_CONFIG_HOME/mosaic-companion/` when `XDG_CONFIG_HOME` is set, otherwise `~/.config/mosaic-companion/`. On Windows, `%APPDATA%\mosaic-companion\`. This is where Electron puts MosAIc's user data, and MosAIc's own example (`examples/mcp/mcp-hello/setup.js`) resolves it the same way. | §6.1 | 2 |
@@ -360,7 +360,7 @@ PACKAGE_NAME, ENGINE_VERSION, LIMITS
   - `AGENTS.md` gets "Commands".
   - Shrink `scripts/case-ids-pending.txt` to the SRV, INS, MOS and QRK ids.
 
-### Status of commit 1 (done 2026-11-13; proposed, not committed)
+### Status of commit 1 (done 2026-11-13; committed by the maintainer as `d4dc84b`)
 
 All of steps 1.1 to 1.14 are done and every gate command passes:
 
@@ -433,9 +433,10 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
 
 ### Steps
 
-- [ ] **2.1 The stdio harness** (`rigs/mcp-harness/`).
-  - It starts a server as a child process with the MCP SDK's `StdioClientTransport`, at the
-    pinned SDK version.
+- [x] **2.1 The stdio harness** (`rigs/mcp-harness/`).
+  - It starts a server as a child process and talks to it with the MCP SDK's client, at the
+    pinned SDK version. As built, the default "strict" mode spawns the child itself and uses the
+    SDK's framing (so it can read every stdout byte); an `sdk` mode uses `StdioClientTransport`.
   - It builds the child's environment the way MosAIc does: the parent's environment with the
     entry's `env` laid over it, and undefined values dropped. That is
     `electron/integrations/mcp/MCPClient.ts:151-201` in MosAIc at `7af40c8`.
@@ -446,7 +447,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
       message;
     - the server's stderr;
     - a way to kill the client mid-call.
-- [ ] **2.2 Safeguards** (`packages/server/src/safeguards/`).
+- [x] **2.2 Safeguards** (`packages/server/src/safeguards/`).
   - `scrubEnvironment()` runs as the very first statement of the entry. It deletes every
     variable outside the allow-list of §4.5 and keeps `DISTILLER_*`.
   - `neutraliseOutbound(text)` uses the strings decided above. Every text the server returns
@@ -465,7 +466,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
       never runs);
     - SRV-4;
     - SRV-5.
-- [ ] **2.3 The server** (`packages/server/src/`).
+- [x] **2.3 The server** (`packages/server/src/`).
   - Use the SDK's low-level `Server` class, with handlers for `tools/list` and `tools/call`, so
     that argument validation and error results are ours. Do not use `registerTool` with zod
     shapes: that path would let unknown arguments through, and would answer `{}` with the SDK's
@@ -500,7 +501,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
     `rulepacks/default.json` and `profiles/` into `packages/server/dist/`.
   - *Tests:* SRV-1 and SRV-6 to SRV-12. SRV-12 runs the pool through `distill` and through
     `packages/core` and compares the bytes.
-- [ ] **2.4 The installer** (`packages/installer/src/`, CLI `dist/cli.mjs`). Subcommands:
+- [x] **2.4 The installer** (`packages/installer/src/`, CLI `dist/cli.mjs`). Subcommands:
   `install`, `doctor`, `uninstall` and `serve`. `serve` runs the bundled server; it exists for
   the by-hand route of §6.3.
   - `install` does exactly §6.3:
@@ -519,7 +520,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
     5. Print what to press in MosAIc.
   - Our entry is the JSON of §6.3, with the fixed id and the absolute paths.
   - `doctor` makes each check of §6.3 and prints the fix for each failure. It starts the
-    installed server through the harness logic to list its tools. A missing MosAIc version is
+    installed server with the SDK's client (inside the installer, not the harness) to list its tools. A missing MosAIc version is
     reported as "unknown", not as a failure.
   - `uninstall` removes our entry with the same byte-preserving edit and removes our installed
     copy. It removes the data directory only after a `y` answer, or with `--yes`.
@@ -532,7 +533,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
     - INS-4: fake `node` scripts on a fake `PATH`, printing chosen versions;
     - INS-5: the exact entry started with `PATH=/usr/bin:/bin`.
   - Add the `installer-os` CI job.
-- [ ] **2.5 README for users.** New sections:
+- [x] **2.5 README for users.** New sections:
   - **Install into MosAIc**, giving:
     - the commands above;
     - `doctor`;
@@ -542,7 +543,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
     when a chat agent calls the distiller, the original text is already in that chat.
   - *Test:* INS-7 runs each documented command from the README, extracted from its fenced
     blocks, in a temporary home, and checks the documented outcome.
-- [ ] **2.6 Seeded defects and pending ids.**
+- [x] **2.6 Seeded defects and pending ids.**
   - Add rows for:
     - the environment scrub off (SRV-2 fails);
     - outbound neutralisation off (SRV-4 fails);
@@ -561,17 +562,57 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
   Record the result and the MosAIc version in the commit report. This is a smoke check, not a
   case; commit 3 automates it as MOS-1.
 
+### Status of commit 2 (done 2026-11-13 except step 2.7; proposed, not committed)
+
+Steps 2.1 to 2.6 are done and ticked; the work is in the tree, unstaged. Step 2.7 (the try in a real MosAIc) is **not** done: it needs a
+development build of MosAIc and opens its window on the maintainer's screen (§7.2, question 14).
+What was checked instead, against MosAIc's source at `7af40c8`: the entry's fields, the path of
+`mcp-plugins.json` and the environment merge.
+
+| Gate | Result |
+|---|---|
+| `npm run lint` | clean |
+| `npm run build` | builds the engine, `packages/server/dist/server.mjs` and `packages/installer/dist/cli.mjs` |
+| `npm run test:quick` | 2,500 passed, 60 skipped (the cases that start processes), in 9.6 s |
+| `npm run test:local` | 2,896 passed, in 125 s (budget 15 min) |
+| `npm run test:seeded` | all 12 rows caught, the 5 new ones included (`docs/seeded-defects.md`) |
+| `npm run conformance` | 318 cases, 0 failed |
+| REP-5 | every ENG, VAL, SRV and INS case has a test; the pending file holds only MOS and QRK |
+| The lone copy | `server.mjs` with its pack and profiles and no `node_modules` answers (SRV-1) |
+
+Where the work differs from this list (each is in `docs/spec/07-decisions-and-open-questions.md`):
+- **A bug the server tests found in the engine, fixed in `packages/core`:** a dictionary template
+  that a rule always hits (`<use_tool {n}`) made the fake allocator loop for ever. The engine now
+  refuses such a template with `INVALID_ARGUMENTS` and ends a run of 10,000 rejected fakes with
+  `INTERNAL` (§2.8, §2.11; new tests under ENG-9). `refusal` is now exported from `core`.
+- **The harness owns the child's stdout** in its default mode and uses the SDK's framing, because
+  `StdioClientTransport` hides the stream that SRV-6 must read; an `sdk` mode uses that transport.
+- **The scrub is the entry's first import**, because an ES module body runs after its imports.
+- **Neutralisation keeps the quotes** round `__payment_required`, so JSON stays valid; a segment id
+  of that name comes back changed (question 15).
+- **A global set-up builds the server and the installer** in the local and full tiers
+  (`scripts/vitest-global-setup.mjs`); seeded rows have a `tier`.
+- **The installer's choices:** an empty plugins file counts as `[]`; nothing is written when
+  nothing changes; a read-only file that must change is refused; duplicates of our entry collapse
+  to one; `doctor` reports MosAIc's version as "unknown (not detected)". The entry's argument is
+  `server/server.mjs`, not `server/index.js`.
+- **Added `rigs/*` to the workspaces**, and `esbuild` as a pinned dev dependency.
+
+Not verified: the `installer-os` job (macOS and Windows) has never run. The installer's tests
+assume POSIX paths in places, such as `/usr/bin:/bin` and `new URL(...).pathname`, so that job may
+fail on Windows until it is run once.
+
 ### Gate for commit 2
 
 All of these must hold before the commit is proposed:
-- Commit 1's gate still holds.
-- `npm run build` produces `packages/server/dist/server.mjs`, which runs with no
+- [x] Commit 1's gate still holds.
+- [x] `npm run build` produces `packages/server/dist/server.mjs`, which runs with no
   `node_modules` beside it. A test copies it alone to a temporary directory and calls it through
   the harness.
-- `npm run test:local` passes, including SRV-1 to SRV-12 and INS-1 to INS-7.
-- `npm run test:seeded`: every row fails as expected, the new ones included.
-- Step 2.7 done, with its result in the report.
-- The specification sections named for commit 2 are updated.
+- [x] `npm run test:local` passes, including SRV-1 to SRV-12 and INS-1 to INS-7.
+- [x] `npm run test:seeded`: every row fails as expected, the new ones included.
+- [ ] Step 2.7 done, with its result in the report. **Not done** (question 14).
+- [x] The specification sections named for commit 2 are updated.
 
 Proposed subject: `feat(server): add the MCP server and the MosAIc installer`.
 

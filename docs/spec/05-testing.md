@@ -112,7 +112,17 @@ runner is written for its format, and `certified` becomes true only by passing i
 
 These start the real server as a child process and talk to it with the MCP SDK client at
 MosAIc's version, merging the environment the way MosAIc does (the entry's `env` over the
-parent's). The harness is `rigs/mcp-harness`.
+parent's). The harness is `rigs/mcp-harness`. It has two modes. The default, "strict", spawns the
+child itself and reads its stdout with the SDK's own framing, line by line, recording as a protocol
+violation any line that is not UTF-8, JSON and one JSON-RPC message, and any bytes left without a
+newline; the SDK's `StdioClientTransport` cannot do that, because it owns the stream. The "sdk" mode
+uses `StdioClientTransport`, as MosAIc does, and records its parse errors as violations. The
+cases run the built `dist/server.mjs`. SRV-2 and SRV-8 need to see inside the server, so they run
+`dist/test-entry.mjs`, which is the server plus four tools that exist only there: `test_env` (the
+names of the environment variables the server holds), `test_hang` (a call whose worker never
+answers), `test_advance` (moves a fake clock that the deadline runs on) and `test_pending`
+(how many calls the server holds). The installer never copies it. The cases that start a process
+run in the local and full tiers, after a global set-up has built the server.
 
 | Id | Case | Kind | Input → expected |
 |---|---|---|---|
@@ -131,6 +141,10 @@ parent's). The harness is `rigs/mcp-harness`.
 
 ## 5.7 The installer
 
+These run with `HOME`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `APPDATA` and `LOCALAPPDATA` set to
+temporary directories, and never touch the real ones. Where a case needs the server it uses the
+built bundle. The cases that start a process run in the local and full tiers.
+
 | Id | Case | Kind | Input → expected |
 |---|---|---|---|
 | INS-1 | Every prior state of MosAIc's server list | abstract | The file absent, empty, malformed, holding only other entries, holding an older entry of ours, holding our current entry, read-only × install, upgrade, uninstall → other entries byte-equal; exactly one entry of ours; a backup made; a malformed file left untouched, with a message |
@@ -140,6 +154,11 @@ parent's). The harness is `rigs/mcp-harness`.
 | INS-5 | The entry starts under MosAIc's conditions | adversarial | The harness starts the exact entry the installer wrote, with a minimal `PATH` like a Finder launch → the server answers |
 | INS-6 | Uninstall removes ours, and only ours | adversarial | A file with several entries → only ours removed; our data directory removed only after confirmation |
 | INS-7 | The README's procedures work | confirmatory | Install, `doctor` and uninstall, run exactly as documented, in a temporary home directory → each documented outcome |
+
+**Seeded defects, server and installer.** The environment scrub off → SRV-2 fails. Outbound
+neutralisation off → SRV-4 fails. The deadline off → SRV-8 fails. The byte-preserving edit replaced
+by re-serialisation → INS-1 fails. The temporary-file rename replaced by a direct write → INS-3
+fails.
 
 ## 5.8 Inside a real MosAIc
 

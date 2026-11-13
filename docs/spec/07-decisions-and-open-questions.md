@@ -41,6 +41,16 @@ release, and each is stated where it applies.
 | `not_mask` guards every secret rule whose value can be `***` | §3.4 | A distillate must distil to itself (ENG-10) |
 | `gov_id.mrz` and `financial.crypto_address` are each two or three rules | §3.3.5, §3.3.6 | Every validator of a rule must accept a match, and each checks one layout or encoding |
 | ENG-3 looks for 4-character substrings that carry content, not runs of separators or of the fake's own filler | §5.3 | A shape-preserving fake keeps separators and zeros, so a literal reading could never pass for a machine-readable zone |
+| A request dictionary's template must give some fake in 1 to 100 that no rule hits, else `INVALID_ARGUMENTS`; 10,000 rejected candidates in a row is `INTERNAL` | §2.11, §2.8 | SRV-4 found that a template such as `<use_tool {n}` made the allocator loop for ever; the loader already refuses the same in a pack |
+| The engine runs in a worker thread; the 20-second deadline terminates it, starts a new one and answers `DEADLINE`; each call's clock starts when the server receives it | §4.5 | A synchronous engine cannot be interrupted in its own thread |
+| In every returned text, `<use_tool`, `<mosaic_ui` and `__payment_required` become `[neutralised: …]`, in any case; quotes round the payment key stay | §4.5 | The replacement keeps JSON valid and removes the quoted key; a replacement that ate the quotes would have broken it. Cost: a segment id of `__payment_required` comes back changed |
+| The start-up failure is one line, `DISTILLER_START_FAILED <code>`, with exit status 2; an unreadable or non-JSON pack or profile is `PACK_SCHEMA` or `PROFILE_SCHEMA` | §4.1 | Only a fixed code may reach stderr |
+| The environment scrub is the entry's first import | §4.5 | An ES module's body runs after its imports, so a call in the body would come too late |
+| The test entry `dist/test-entry.mjs` adds `test_env`, `test_hang`, `test_advance` and `test_pending`, and is never installed | §5.6 | SRV-2 and SRV-8 need to see inside the server |
+| The harness owns the child's stdout in "strict" mode and uses the SDK's framing, rather than `StdioClientTransport`; an "sdk" mode uses the SDK's transport | §5.6 | The SDK's transport hides the stream, and SRV-6 must see every byte |
+| The installer carries a copy of the built server, and installs it as `<data dir>/server/server.mjs` with `rulepacks/` and `profiles/` beside it; `<data dir>` holds the log too | §4.6, §6.3 | One file and its data, needing no `node_modules`; the entry must not point into a temporary cache |
+| An empty `mcp-plugins.json` counts as `[]`; nothing is written when nothing changes; a read-only file that must change is refused | §6.3 | The cases of INS-1 that the specification left open |
+| `doctor` reports MosAIc's version as "unknown (not detected)" | §6.3 | Nothing on disk says which version is installed |
 | REP-4, a check of nondeterminism by syntax tree; REP-5, a check that every case has a test | §5.9 | The two properties the principles of §1.5 promise must not rest on review |
 
 ## 7.2 Open questions
@@ -88,3 +98,13 @@ release, and each is stated where it applies.
 13. **The `hostile input` size of ENG-20.** The specification gives none. 32 KiB is used. The cost
     of `secret.private_key` is its bound times the number of header starts in the input, so a longer
     input costs more however the bound is chosen.
+14. **Step 2.7, the try in a real MosAIc, was not done.** It needs a development build of MosAIc
+    (an Electron application with a large dependency tree) and opens its window on the
+    maintainer's screen; that was left for the maintainer to decide. What was checked
+    instead, against MosAIc's source at `7af40c8` read from a clone: the entry's fields and the
+    path of `mcp-plugins.json` (`electron/integrations/mcp/plugin.ts`, `examples/mcp/mcp-hello/setup.js`),
+    and the environment merge (`MCPClient.ts:151-166`), which the harness copies. Commit 3's rig
+    (MOS-1) does the real run. Until then, MAN-2 and a first run by hand are the open check.
+15. **A segment id that is `__payment_required` comes back changed** (§4.5). The server's second
+    neutralisation cannot tell an id from other text. An id is chosen by the caller, so the answer
+    is to choose another; the alternative is to refuse such an id, which would be a new error code.

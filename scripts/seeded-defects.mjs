@@ -20,7 +20,11 @@ import { join } from "node:path";
 
 const root = new URL("../", import.meta.url).pathname;
 
-/** @type {{mechanism: string, file: string, find: string, replace: string, cases: string[]}[]} */
+/**
+ * `tier` is the test tier the cases run in: `quick` by default, `local` for the cases that start
+ * the server (the global set-up then builds the changed source before the cases run).
+ * @type {{mechanism: string, file: string, find: string, replace: string, cases: string[], tier?: string}[]}
+ */
 export const rows = [
   {
     mechanism:
@@ -72,6 +76,46 @@ export const rows = [
     replace: "for (const op of uniteOps(ops).slice(0, -1)) {",
     cases: ["ENG-1"],
   },
+  {
+    mechanism: "The environment scrub off (no variable is deleted)",
+    file: "packages/server/src/safeguards/scrub.ts",
+    find: "    delete env[name];",
+    replace: "    removed += 0;",
+    cases: ["SRV-2"],
+    tier: "local",
+  },
+  {
+    mechanism: "Outbound neutralisation off (a tool result carries its text as it is)",
+    file: "packages/server/src/app.ts",
+    find: "text: neutraliseOutbound(text)",
+    replace: "text",
+    cases: ["SRV-4"],
+    tier: "local",
+  },
+  {
+    mechanism: "The deadline off (no timer is set for a call)",
+    file: "packages/server/src/pool.ts",
+    find: "job.timer = this.clock.setTimeout(() => this.expire(job), DEADLINE_MS);",
+    replace: "job.timer = undefined;",
+    cases: ["SRV-8"],
+    tier: "local",
+  },
+  {
+    mechanism:
+      "The byte-preserving edit replaced by re-serialisation (other entries are written again from their parsed value)",
+    file: "packages/installer/src/plugins-file.ts",
+    find: "parts.push(e.lead + text.slice(e.start, e.end));",
+    replace: "parts.push(e.lead + JSON.stringify(JSON.parse(text.slice(e.start, e.end))));",
+    cases: ["INS-1"],
+  },
+  {
+    mechanism: "The temporary-file rename replaced by a direct write over the original",
+    file: "packages/installer/src/plugins-file.ts",
+    find: "fsOps.rename(tmp, path);",
+    replace:
+      'const direct = openSync(path, "w", 0o644); writeSync(direct, result.text); closeSync(direct);',
+    cases: ["INS-3"],
+  },
 ];
 
 const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
@@ -90,7 +134,7 @@ function copyRepo() {
 }
 
 /** Runs the named cases in `dir`; returns, for each id, the number of tests that ran and failed. */
-function runCases(dir, ids) {
+function runCases(dir, ids, tier = "quick") {
   const out = join(dir, "vitest-seeded.json");
   const pattern = "^(?:" + ids.map((i) => `${i}(?![0-9])`).join("|") + ")";
   spawnSync(
@@ -105,7 +149,7 @@ function runCases(dir, ids) {
     ],
     {
       cwd: dir,
-      env: { ...process.env, DISTILLER_TIER: "quick" },
+      env: { ...process.env, DISTILLER_TIER: tier },
       encoding: "utf8",
       maxBuffer: 1 << 28,
     },
@@ -144,7 +188,7 @@ for (const row of rows) {
     continue;
   const dir = copyRepo();
   try {
-    const before = runCases(dir, row.cases);
+    const before = runCases(dir, row.cases, row.tier);
     for (const id of row.cases) {
       if (before[id].ran === 0 || before[id].failed > 0) {
         throw new Error(
@@ -164,7 +208,7 @@ for (const row of rows) {
       path,
       source.replace(row.find, () => row.replace),
     );
-    const after = runCases(dir, row.cases);
+    const after = runCases(dir, row.cases, row.tier);
     const caught = row.cases.every((id) => after[id].failed > 0);
     if (!caught) allCaught = false;
     results.push({ row, after, caught });

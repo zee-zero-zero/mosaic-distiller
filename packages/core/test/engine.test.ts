@@ -221,6 +221,30 @@ describe("ENG-9 fakes skip taken and caught values", () => {
     const r = distillText(e, "write jane@x.co");
     expect(r.segments[0].distillate).toBe("write person3@example.com");
   });
+  it("a dictionary template that every rule hits is refused, and never loops", () => {
+    for (const template of ["<use_tool {n}", "{n}@x <mosaic_ui", "jane@northwind-mail.com {n}"]) {
+      const start = Date.now();
+      const r: any = agent.distill({
+        segments: [{ id: "1", text: "say other" }],
+        dictionaries: [{ name: "a", terms: ["other"], template }],
+      });
+      expect(r.error?.code, template).toBe("INVALID_ARGUMENTS");
+      expect(Date.now() - start).toBeLessThan(2000);
+    }
+  });
+  it("a template with unlimited rejected fakes ends as an internal error, not a loop", () => {
+    // Every n up to 100 is free of hits, and every later one is hit: the check at load passes and
+    // the allocation runs out.
+    const e = smallEngine([
+      { id: "t.a", pattern: "zz[a-y]{0,200}", surrogate: "Q{n}" },
+      { id: "t.catch", pattern: "Q[0-9]{3,6}", edges: "none" },
+    ]);
+    const many = Array.from({ length: 150 }, (_, i) => `zz${"y".repeat(i + 1)}`).join(" ");
+    const start = Date.now();
+    const r: any = e.distill({ segments: [{ id: "1", text: many }] });
+    expect(Date.now() - start).toBeLessThan(10_000);
+    expect(r.error?.code).toBe("INTERNAL");
+  });
   it("fakes follow the §2.8 table", () => {
     const text = [
       "jane@northwind-mail.com",

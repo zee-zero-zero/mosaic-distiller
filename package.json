@@ -6,7 +6,8 @@
   "description": "Workspace root of the distiller: a local MCP server and the engine inside it.",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "rigs/*"
   ],
   "engines": {
     "node": ">=20"
@@ -18,12 +19,13 @@
     "test:full": "node scripts/run-tier.mjs full",
     "test:seeded": "node scripts/seeded-defects.mjs",
     "conformance": "node --import tsx scripts/conformance.mjs --full",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build -w @mosaic-distiller/core && npm run build -w @mosaic-distiller/server && npm run build -w @mosaic-distiller/installer"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@types/node": "20.19.43",
     "@vitest/coverage-v8": "3.2.7",
+    "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "fast-check": "4.10.2",
     "prettier": "3.10.1",

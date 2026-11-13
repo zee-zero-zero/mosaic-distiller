@@ -4,7 +4,7 @@
 // engine never returns the original text in place of a distillate (§2.11, "Fail closed").
 import { actionFor, neutraliseMarker } from "./actions";
 import { buildDistillate, type Op } from "./distillate";
-import { FakeAllocator } from "./fakes";
+import { FakeAllocator, surrogateIsUsable } from "./fakes";
 import { mergeHits, type Span } from "./resolve";
 import { countersFor, detect } from "./pattern/scan";
 import { ENGINE_VERSION, PACKAGE_NAME } from "./name";
@@ -164,7 +164,10 @@ class EngineImpl implements Engine {
         !DICTIONARY_NAME.test(d.name) ||
         names.has(d.name) ||
         packDictionaries.has(`dictionary.${d.name}`) ||
-        (d.template !== undefined && !d.template.includes("{n}"))
+        (d.template !== undefined && !d.template.includes("{n}")) ||
+        // A template whose every fake some rule hits (such as `<use_tool {n}`) could never be
+        // allocated; it is refused here, as the loader refuses the same in a pack.
+        (d.template !== undefined && !surrogateIsUsable(d.template, this.pack.ruleset))
       ) {
         throw new RequestError("INVALID_ARGUMENTS");
       }

@@ -245,14 +245,23 @@ export class FakeAllocator {
       used = new Set();
       this.used.set(category, used);
     }
+    let rejected = 0;
     for (let n = this.lowest.get(category) ?? 1; ; n++) {
       if (used.has(n)) continue;
+      // A category that runs out of fakes is an internal error (§2.8, §2.11), and never a loop.
+      if (rejected > MAX_REJECTED_FAKES) throw new Error("the category has run out of fakes");
       // A template that runs out falls back to the shape-preserving form; a value with too few
       // digit positions to hold n falls back to a plain numbered marker.
       const fake =
         makeFake(surrogate, variant, n, sample) ?? shapeForm(sample, n) ?? `[redacted ${n}]`;
-      if (this.checks.alone && this.hitAlone(fake)) continue;
-      if (this.checks.inInput && this.occursInInput(fake)) continue;
+      if (this.checks.alone && this.hitAlone(fake)) {
+        rejected++;
+        continue;
+      }
+      if (this.checks.inInput && this.occursInInput(fake)) {
+        rejected++;
+        continue;
+      }
       used.add(n);
       let low = this.lowest.get(category) ?? 1;
       while (used.has(low)) low++;
@@ -262,6 +271,9 @@ export class FakeAllocator {
     }
   }
 }
+
+/** How many fakes in a row may be rejected for one value before the category counts as run out. */
+const MAX_REJECTED_FAKES = 10_000;
 
 /** True when some n from 1 to 100 gives a fake of this surrogate that no rule hits on its own. */
 export function surrogateIsUsable(surrogate: string, ruleset: Ruleset): boolean {

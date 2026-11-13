@@ -446,11 +446,14 @@ The checks are made in this order, and the first failure is the refusal: the sha
 `store`, `forward` or `task`); the mode; the profile; the number of segments; each segment id in
 turn (its form, then whether it repeats); the number of dictionaries; each dictionary (its name is
 1 to 32 characters of `[a-z0-9_]`, unique, and not one the pack already carries; its template
-contains `{n}`; all otherwise `INVALID_ARGUMENTS`); the number of terms; each term's folded length;
+contains `{n}`, and some n from 1 to 100 gives a fake that no rule hits, as the loader requires of a
+pack's templates; all otherwise `INVALID_ARGUMENTS`); the number of terms; each term's folded length;
 the total size.
 
 **Fail closed.** Any internal error refuses the request with `INTERNAL` and no distillate. A
-category that runs out of fakes (§2.8) is an internal error. The
+category that runs out of fakes (§2.8) is an internal error: a value for which 10,000 candidate
+fakes in a row are rejected, because a rule hits them or the input holds them, ends the request
+there and never loops. The
 engine never returns the original text in place of a distillate.
 
 **Speed.** One megabyte dense with matches finishes within 2 seconds on an ordinary laptop. A

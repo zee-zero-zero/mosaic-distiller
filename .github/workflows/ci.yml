@@ -1,6 +1,6 @@
 # Continuous integration: the quick tier on every push and pull request (Node 20 and 22), the local
-# tier on every push and pull request, and every pool in full, with the conformance runner, on every
-# push to master. Every job installs with `npm ci` and caches npm's cache under the key of
+# tier on every push and pull request, the installer's tests on macOS and Windows on every push to
+# master, and every pool in full, with the conformance runner, on every push to master. Every job installs with `npm ci` and caches npm's cache under the key of
 # package-lock.json.
 name: ci
 on:
@@ -34,6 +34,24 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:local
+
+  installer-os:
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx vitest run packages/installer
+        env:
+          DISTILLER_TIER: local
 
   pools-full:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'

@@ -10,9 +10,12 @@ client, as a child process, and speaks MCP over stdio. It has two tools, `distil
 - **Transport:** stdio. Stdout carries only MCP protocol messages, nothing else, ever.
 - **MCP SDK:** `@modelcontextprotocol/sdk`, pinned to the version MosAIc ships, so the two sides
   agree on the protocol. At MosAIc commit `7af40c8` that is `^1.27.0`, resolving to 1.28.0.
-- **Start-up:** scrub the environment (§4.5), load and verify the rule pack and profiles, then
-  connect the transport. If the rule pack is refused (§2.2), write one fixed error code to stderr
-  and exit with a non-zero status, before connecting.
+- **Start-up:** scrub the environment (§4.5), load and verify the rule pack and profiles from the
+  directory of the running file, start the engine worker (§4.5), then connect the transport. If the
+  pack or a profile is refused (§2.2), write one line to stderr, `DISTILLER_START_FAILED <code>`,
+  where `<code>` is the loader's code, and exit with status 2, before connecting. A pack or profile
+  file that is missing or is not JSON gives `PACK_SCHEMA` or `PROFILE_SCHEMA`; so does a missing
+  profile named `agent`, the default. Nothing else is ever written to stderr.
 - **Shutdown:** when stdin closes, exit within 2 seconds.
 - **No network, no files read except our own.** The server reads its rule pack and profiles from
   its own installation directory, and writes its log to its own data directory (§4.5). It opens no
@@ -98,10 +101,17 @@ installer therefore sets both to empty strings in the server's MosAIc entry (§6
 applies over its own environment.
 
 **Every result is neutralised.** Every text the server returns, results and error messages alike,
-passes through one function that replaces `<use_tool`, `<mosaic_ui` and `"__payment_required"`.
-MosAIc acts on these when they appear in a tool result: the first two as markup, the last as a
-request to open a payment screen. The engine already neutralises them in distillates; this second
-pass covers every other path, such as JSON escaping that produces one by accident.
+passes through one function, the one that builds a tool result. It replaces `<use_tool` with
+`[neutralised: use_tool]`, `<mosaic_ui` with `[neutralised: mosaic_ui]` and `__payment_required`
+with `[neutralised: payment_required]`, in any case of letters. None of these contains a quote or a
+backslash, so a JSON text stays valid JSON; and where the payment key was written between quotes,
+the quotes stay, so that the text no longer holds `"__payment_required"`. MosAIc acts on these when
+they appear in a tool result: the first two as markup, the last as a request to open a payment
+screen. The engine already neutralises them in distillates; this second pass covers every other
+path. One such path is a dictionary named `__payment_required`, whose category appears in the
+result, and another is a segment id that is that word: the id comes back neutralised, and so is not
+the id that was sent. The environment scrub is the first import of the entry, because a module is
+evaluated after the modules it imports, in order.
 
 **No content in logs.** Log events are codes and counts. They never hold a string taken from
 input: no text, no term, no segment id, no dictionary name. The log is written to the server's
@@ -110,7 +120,12 @@ failure codes.
 
 **A deadline per call.** Every tool call finishes within 20 seconds or returns `DEADLINE`. MosAIc
 gives up on a tool call after 60 seconds; the margin leaves room for MosAIc's own work. The server
-stays up after a deadline and answers the next call.
+stays up after a deadline and answers the next call. The engine is synchronous and cannot be
+stopped inside its own thread, so it runs in a `worker_threads` worker that is the same file as the
+server. One call runs at a time; the others wait in a queue. Each call's 20 seconds start when the
+server receives it. When the running call passes its deadline, the server terminates the worker,
+starts a new one and answers `DEADLINE`; calls still waiting go to the new worker. A call that is
+still waiting at its own deadline is answered `DEADLINE` and dropped, and the worker is left alone.
 
 **A cap on result size.** A result larger than 4 MiB of JSON text is refused with
 `RESULT_TOO_LARGE`. Within the input limits of §2.11 this should not happen; the cap is a guard.
@@ -120,7 +135,9 @@ holds no state between requests.
 
 ## 4.6 Data directory
 
-The server's own directory, per operating system, holds its log and nothing else:
+The server's own directory, per operating system, holds its log, `distiller.log` and its older
+copy `distiller.log.1`, and, once the installer has run, the installed copy of the server in
+`server/` (§6.3):
 - Linux: `$XDG_DATA_HOME/<package name>/`, or `~/.local/share/<package name>/`;
 - macOS: `~/Library/Application Support/<package name>/`;
 - Windows: `%LOCALAPPDATA%\<package name>\`.

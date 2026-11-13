@@ -41,7 +41,9 @@ itself. Source references are to `hypercycle-development/mosaic-companion` at co
 `packages/installer` is a command-line program, run once by the user: `npx <package> install`.
 
 **`install`:**
-1. Finds Node.js 20 or newer and records its **absolute path**. MosAIc launched from the macOS
+1. Finds Node.js 20 or newer and records its **absolute path**. It tries the running Node
+   (`process.execPath`), then each directory of `PATH`, then `/opt/homebrew/bin`, `/usr/local/bin`
+   and the default of `nvm`, and takes the first that reports a version of 20 or more. MosAIc launched from the macOS
    Finder may not see the shell's `PATH`, so a bare `node`, as MosAIc's own example writes, can
    fail there. Without a suitable Node, it stops with a message saying what to install.
 2. Copies the server, with its rule pack and profiles, into a stable per-user directory, so that
@@ -49,11 +51,18 @@ itself. Source references are to `hypercycle-development/mosaic-companion` at co
    `~/.local/share/<package name>/server/` on Linux, `~/Library/Application Support/<package name>/server/`
    on macOS, `%LOCALAPPDATA%\<package name>\server\` on Windows.
 3. Finds MosAIc's settings directory (§6.1) and edits `mcp-plugins.json`:
-   - reads it; refuses to touch a file it cannot parse, and says so;
-   - keeps every other entry byte for byte;
-   - adds our entry, or replaces our older one, recognised by its `name`;
-   - writes a backup, then writes to a temporary file and renames it over the original, so a
-     crash leaves the old file or the new one, never half of one.
+   - reads it; refuses to touch a file it cannot parse as a JSON array, and says so. A file that
+     is empty or only blank counts as `[]`; an absent file is created as `[]` plus our entry, and
+     its directory too if MosAIc has never run, which the installer says;
+   - keeps every other entry byte for byte, as its original text, with its own indentation, line
+     endings and any byte-order mark kept;
+   - adds our entry, or replaces our older one, recognised by its `name` or its fixed `id`
+     (`0f107eda-796d-44e2-b910-37c18e2bc535`); if the file holds several entries of ours, the first
+     is replaced and the others removed, so that exactly one remains;
+   - writes a backup, `mcp-plugins.json.bak`, then writes to a temporary file and renames it over
+     the original, so a crash leaves the old file or the new one, never half of one. When nothing
+     would change, nothing is written and no backup is made. A read-only file that would have to
+     change is refused and left untouched.
 4. Tells the user to press Refresh on MosAIc's MCP page, or to restart MosAIc.
 
 Our entry:
@@ -64,7 +73,7 @@ Our entry:
  "description": "Replaces sensitive values in text with fake ones",
  "transport": "stdio",
  "command": "/absolute/path/to/node",
- "args": ["/absolute/path/to/server/index.js"],
+ "args": ["/absolute/path/to/server/server.mjs"],
  "env": {"NODE_OPTIONS": "", "NODE_PATH": ""},
  "autoConnect": true}
 ```
@@ -73,11 +82,19 @@ The `env` blanks two variables that Node applies before any of our code runs (§
 applies the entry's `env` over its own environment.
 
 **`doctor`** checks, and prints the fix for each failure: that the entry exists and points at
-files that exist; that the recorded Node runs and is new enough; that the server starts and lists
-its tools; that the rule pack loads; and which MosAIc version is installed.
+files that exist; that the recorded Node runs and is new enough; that the server starts, with the
+entry's own command, arguments and environment, and lists its tools; that the rule pack loads; and
+which MosAIc version is installed. The version is reported as "unknown (not detected)", and is
+never a failure, because nothing on disk says which one it is. It ends with `all checks passed`
+when every check holds.
 
 **`uninstall`** removes our entry, keeping every other entry byte for byte, and removes our
-installed copy. It removes our data directory only after asking.
+installed copy, `server/`. It removes the rest of our data directory only after a `y` answer, or
+with `--yes`; with no answer, as when input is closed, it keeps it.
+
+**`serve`** runs the installed server in the installer's own process, for the by-hand route below.
+The installer and the server are each one bundled file; the installer carries a copy of the server
+that it installs.
 
 **Installing by hand** is also documented, for users who prefer it: on MosAIc's MCP page, a stdio
 server with command `npx` and arguments `-y <package>@<version> serve`. The README states its two
