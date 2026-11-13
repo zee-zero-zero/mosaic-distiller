@@ -162,7 +162,10 @@ describe("INS-4 finding Node", () => {
 
     it("INS-4 Node 18 on PATH is refused, then a Node 20 later on PATH is used", () => {
       const old = fakeNode(join(tmp(), "old"), "v18.0.0");
-      expect(findNode(base({ pathEnv: join(old, "..") })).ok).toBe(false);
+      // The fixed fallback directories are real here, so a Node 20 in /usr/local/bin may answer:
+      // what is checked is that the Node 18 on PATH is never the one chosen.
+      const first = findNode(base({ pathEnv: join(old, "..") }));
+      expect(first.ok && first.path === old).toBe(false);
       const good = fakeNode(join(tmp(), "good"), "v20.1.0");
       const r = findNode(base({ pathEnv: [join(old, ".."), join(good, "..")].join(delimiter) }));
       expect(r.ok && r.path).toBe(good);
@@ -170,8 +173,11 @@ describe("INS-4 finding Node", () => {
 
     it("INS-4 a file that is not executable or not a program is skipped", () => {
       const dir = tmp();
-      write(join(dir, "node"), "#!/bin/sh\necho v22.0.0\n", 0o644);
-      expect(findNode(base({ pathEnv: dir })).ok).toBe(false);
+      const p = join(dir, "node");
+      write(p, "#!/bin/sh\necho v22.0.0\n", 0o644);
+      const r = findNode(base({ pathEnv: dir }));
+      expect(r.ok && r.path === p).toBe(false);
+      if (!r.ok) expect(r.tried.some((t) => t.startsWith(p))).toBe(false);
     });
   });
 });
