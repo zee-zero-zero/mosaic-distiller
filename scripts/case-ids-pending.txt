@@ -1,0 +1,34 @@
+# Case ids of docs/spec/05-testing.md that have no test yet (REP-5). Remove an id when its test is
+# written; the file is deleted when the last automated case exists. Manual cases (REP-1, MAN-*)
+# are never listed: REP-5 does not require a test for them.
+SRV-1
+SRV-2
+SRV-3
+SRV-4
+SRV-5
+SRV-6
+SRV-7
+SRV-8
+SRV-9
+SRV-10
+SRV-11
+SRV-12
+INS-1
+INS-2
+INS-3
+INS-4
+INS-5
+INS-6
+INS-7
+MOS-1
+MOS-2
+MOS-3
+MOS-4
+MOS-5
+QRK-1
+QRK-2
+QRK-3
+QRK-4
+QRK-5
+QRK-6
+QRK-7

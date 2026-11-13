@@ -1,0 +1,17 @@
+{
+  "format": "profile/1",
+  "name": "document",
+  "actions": {
+    "network.ipv4/private": "flag",
+    "network.ipv4/loopback": "flag",
+    "network.ipv4/link_local": "flag",
+    "inject.special_token": "flag",
+    "inject.tool_markup": "flag",
+    "inject.md_image_remote": "flag",
+    "inject.role_label": "flag",
+    "inject.override_phrase": "flag",
+    "hidden.encoded_blob": "flag",
+    "hidden.invisible": "flag",
+    "inject.consumer_markup": "neutralise"
+  }
+}

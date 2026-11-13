@@ -46,7 +46,7 @@ missing.
 |---|---|---|---|
 | ENG-1 | Nothing a rule matched survives | abstract | Every pool member → running the engine again on its distillate finds nothing it replaced, and every planted value is gone |
 | ENG-2 | The pool keeps its hostile members | guard | Fails if any kind of member listed above is missing |
-| ENG-3 | Records hold no removed text | abstract | Over the pool, no field of any removal or finding contains any 4-character substring of a removed value |
+| ENG-3 | Records hold no removed text | abstract | Over the pool, no field of any removal or finding contains any 4-character substring of a removed value that carries content: one holding a letter or a digit other than `0`, `X` and `x`. A run of separators (`<<<<` in a machine-readable zone) or of filler is the shape that a shape-preserving fake keeps (§2.8), not removed text. The pool's values are chosen so that no value shares such a substring with its own fake or with a rule id |
 | ENG-4 | Values hidden by invisible characters are found | adversarial | `al​ice@northwind-mail.com` with a zero-width space; a soft hyphen inside an IBAN; a zero-width joiner inside `536-22-8914` → each removed, over its whole original range |
 | ENG-5 | Positions map back exactly | abstract | Random invisible characters inserted into planted values → each removal's `start` and `end` cover the planted value and the inserted characters |
 | ENG-6 | Positions are code points | adversarial | An emoji, a Scottish-flag tag sequence and a CJK character before each value → every `start` and `end` counts code points; the flag survives in the distillate |
@@ -58,17 +58,20 @@ missing.
 | ENG-12 | The scan restarts one code point after a rejection | adversarial | A rejected match followed one character later by a valid one → the valid one found |
 | ENG-13 | Line starts | adversarial | `Human: ` after `\n`, after `\r\n`, after a lone `\r`, and after U+2028 → a finding after `\n` and `\r\n` only |
 | ENG-14 | Term folding and boundaries | adversarial | Term `Ștefan` against `ŞTEFAN`, `Stefan`, `stefan.p@northwind-mail.com` and `/home/stefan/`; term `Ana` against `Banana` and `Ана`; two terms sharing a prefix → found ×4; not found ×2; the longer term wins |
-| ENG-15 | Terms are literals | adversarial | Terms `a.b`, `(x)`, `[0-9]{3}`, `\` → each matches only itself |
+| ENG-15 | Terms are literals | adversarial | Terms `a.b`, `(x)`, `[0-9]{3}`, `\\` (two backslashes: a term of one code point is refused, §2.5) → each matches only itself |
 | ENG-16 | Actions and profiles | abstract | Every category × every action, and both built-in profiles: `redact` → a fake; `flag` → kept, with a finding; `neutralise` → the marker; `block` → no distillate, only the reason; the MosAIc literals → neutralised under every profile |
 | ENG-17 | Invisible characters | adversarial | Each "removed" character → deleted and reported once per run; each "kept" character (a Persian joiner, an emoji joiner, a leading byte-order mark, the flag of Wales) → kept |
 | ENG-18 | The distillate is not normalised | adversarial | Full-width digits and a `ﬁ` ligature outside any value → unchanged in the distillate |
 | ENG-19 | Structural limits | adversarial | No segments → `EMPTY_INPUT`; an empty text → an empty distillate; duplicate ids → `DUPLICATE_SEGMENT_ID`; a lone surrogate → replaced, with `LONE_SURROGATE`; each limit of §2.11 at the limit → passes, and one over → refused with no partial result |
-| ENG-20 | Large and hostile input stays fast | adversarial | 1 MB dense with matches → under 2 seconds; for each pattern, an input built to make it backtrack → under 100 ms |
+| ENG-20 | Large and hostile input stays fast | adversarial | 1 MB dense with matches → under 2 seconds; for each pattern, an input of 32 KiB built to make it backtrack (the hit repeated and glued, the hit minus its last character repeated, half of it repeated, its first character repeated) → under 100 ms. In the quick tier the dense input is 64 KiB |
 | ENG-21 | Output is deterministic | abstract | The pool run twice, with rules, dictionaries and terms shuffled → identical bytes |
 | ENG-22 | Counters | adversarial | No match → `evaluated` equals segments for every rule and `fired` is 0; one e-mail → that rule's `fired` is 1; a rejected edge and a rejected checksum → counted where §2.10 says |
 | ENG-23 | The loader refuses bad packs | adversarial | Each refusal of §2.2 → its own code, and no engine is built: unknown kind, validator, action, flag or edge; a lookbehind, `\d`, `+`, two groups; a duplicate id; an undeclared category; a one-letter term; no rules; a category with no usable fake |
 | ENG-24 | The pack hash | abstract | Each field of each rule changed → a different hash; rules reordered → the same hash; a known pack → a known hash, computed independently |
 | ENG-25 | A typical paragraph | confirmatory | One paragraph with an e-mail address and a phone number → the expected distillate, byte for byte |
+
+A rule that can match the empty string hits every fake, so the loader cannot give it a usable one
+(§2.2); the scan's handling of a zero-length match is therefore tested on the scan alone.
 
 **Seeded defects.** Normaliser off → ENG-4, ENG-5 fail. Overlap resolution off → ENG-7 fails.
 Same-value numbering off → ENG-8 fails. Allocation checks off → ENG-9, ENG-10 fail. Edge check
@@ -182,6 +185,8 @@ is passed on after it, not what the chat already holds (§6.5).
 | REP-1 | Names | Before every push, maintainers run a name check against a list of words kept outside this repository. Tracked files, package metadata, commit messages and author identities, split into words on every character that is not a letter and between a lower-case and an upper-case letter, each lower-cased → no listed word. The list is never committed, in any form: a hash of a short word reveals the word to anyone who hashes a guess. CI does not run REP-1. |
 | REP-2 | Claims | Documentation and descriptions → the whole words "anonymise", "anonymised", "anonymous", "anonymisation", "isolated" and "isolation", in either spelling, appear only in a sentence that denies them. Unicode's "isolates", a kind of invisible character, is not one of them. |
 | REP-3 | Specification links | Every `§` reference in `docs/spec/` resolves to a heading |
+| REP-4 | Determinism | `packages/core/src` uses none of `Date`, `Math.random`, `toLocaleLowerCase`, `toLocaleUpperCase`, `localeCompare`, `Intl`, and none of the regular-expression escapes `\d`, `\w`, `\s`, `\b` (read from the syntax tree, so comments do not count). The one exception is `src/pattern/subset.ts`, which names the escapes in order to refuse them. Sorting compares code points |
+| REP-5 | Case coverage | Every case id in this document has at least one test whose name starts with it, except the ids listed in `scripts/case-ids-pending.txt` (which shrinks with each commit and is deleted when the last automated case exists, and in which an id that already has a test is an error), and the cases that are manual by nature: REP-1 and MAN-* |
 
 ## 5.10 Manual tests
 

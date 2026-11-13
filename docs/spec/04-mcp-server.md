@@ -58,12 +58,14 @@ The message is fixed per code and never quotes input.
 
 **Result:** JSON text holding:
 - `modes`: `["rules"]`;
-- `profiles`: the built-in profile names, and the default;
-- `rulepack`: name, version and hash;
-- `engine`: name, version and Unicode version;
-- `categories`: every category the rule pack can report, with its class, so that a user
-  interface can label each one;
-- `limits`: the values of §2.11;
+- `profiles`: `{"names": [...], "default": "agent"}`, the built-in profile names in code-point
+  order and the default;
+- `rulepack`: `{name, version, hash}`;
+- `engine`: `{name, version, unicode}`;
+- `categories`: an object from every category the rule pack can report to its class, so that a
+  user interface can label each one. The caller's own dictionaries are not in it;
+- `limits`: the values of §2.11, as `segments`, `segment_id_length`, `total_bytes`,
+  `dictionaries`, `terms` and `term_length`;
 - `certified`: `false`.
 
 **Description** (152 characters):

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+docs/
+*.md
+conformance/
+rulepacks/
+profiles/
+scripts/case-ids-pending.txt
+config/

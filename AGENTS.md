@@ -56,5 +56,22 @@ These rules bind every change, by a person or an agent.
 
 ## Commands
 
-Not defined yet. The first commit that adds code defines them here: install, the quick test tier,
-the local tier, lint and type-check.
+Node.js 20 or newer (`.nvmrc` says 20). Install once with `npm ci`.
+
+| Command | What it does | Budget |
+|---|---|---|
+| `npm run lint` | ESLint, Prettier check, and `tsc --noEmit` over every workspace | — |
+| `npm run test:quick` | unit tests of every package, a fixed seeded sample of each pool, the conformance sample, and the repository checks REP-2 to REP-5 | 60 s |
+| `npm run test:local` | the quick tier plus the full pools, the conformance runner in full, and (from the server on) the stdio and installer cases | 15 min |
+| `npm run test:full` | as `test:local`, for CI's `pools-full` job | 60 min |
+| `npm run test:seeded` | the seeded-defect run: each core mechanism disabled in a temporary copy, and the named cases must fail; writes `docs/seeded-defects.md` | 15 min |
+| `npm run conformance` | the conformance runner in full: `conformance/rules.jsonl` and `conformance/golden.jsonl` | — |
+| `npm run build` | compiles every workspace | — |
+
+One test case alone: `npx vitest run -t "ENG-11"` (a case's test name starts with its id; give a
+digit boundary, as in `-t "ENG-1(?![0-9])"`, for an id that is a prefix of another). The tier
+reaches the tests through the environment variable `DISTILLER_TIER` (`quick`, `local` or `full`).
+
+`conformance/golden.jsonl` is written by `npx tsx scripts/golden-regen.ts`. Read every change to it
+against the specification before keeping it. `scripts/case-ids-pending.txt` lists the case ids that
+have no test yet (REP-5) and shrinks as tests are written.

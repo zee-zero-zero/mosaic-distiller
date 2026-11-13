@@ -1,0 +1,36 @@
+{
+  "name": "mosaic-distiller-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "description": "Workspace root of the distiller: a local MCP server and the engine inside it.",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint . && prettier --check . && npm run typecheck --workspaces --if-present",
+    "test:quick": "node scripts/run-tier.mjs quick",
+    "test:local": "node scripts/run-tier.mjs local",
+    "test:full": "node scripts/run-tier.mjs full",
+    "test:seeded": "node scripts/seeded-defects.mjs",
+    "conformance": "node --import tsx scripts/conformance.mjs --full",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "20.19.43",
+    "@vitest/coverage-v8": "3.2.7",
+    "eslint": "9.39.5",
+    "fast-check": "4.10.2",
+    "prettier": "3.10.1",
+    "stdnum": "1.17.1",
+    "tsx": "^4.20.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.2",
+    "vitest": "3.2.7"
+  }
+}

@@ -5,3 +5,5 @@ coverage/
 .vitest-cache/
 test-results/
 playwright-report/
+rigs/e2e/.mosaic/
+conformance/results.jsonl

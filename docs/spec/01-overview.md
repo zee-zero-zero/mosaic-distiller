@@ -87,6 +87,13 @@ states the bar exactly.
 | `conformance/` | Example cases with their expected results (§5.5) | — |
 | `rigs/` | Test harnesses (§5) | — |
 
+The workspace packages are named `@mosaic-distiller/core`, `@mosaic-distiller/server` and
+`@mosaic-distiller/installer`. `packages/core` may import `node:crypto`, for SHA-256, and nothing
+else from Node: it reads no file, opens no socket and starts no process. Until the licence and the
+package name are chosen (§7.2, questions 1 and 2) every `package.json` is `"private": true` with the
+licence `UNLICENSED`, nothing is published, and the working name is the one constant `PACKAGE_NAME`
+in `packages/core/src/name.ts`.
+
 ## 1.5 Principles
 
 1. **Runs where the data lives.** Nothing the distiller does reaches the network.

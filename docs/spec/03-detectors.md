@@ -265,6 +265,11 @@ share a category, each id adds a suffix: `org_id.eu_vat.at`, `secret.vendor_key.
   Not: the TD3 specimen with its last digit changed to 1. The whole zone is masked, names included. The
   TD1 composite check is not applied until it is confirmed against Doc 9303: two published sample cards
   disagree on it. Visa zones (`V…`) are left out.
+  The pack carries this as three rules, `gov_id.mrz.td3`, `gov_id.mrz.td2` and `gov_id.mrz.td1`,
+  one per layout, all in the category `gov_id.mrz`. Every validator of a rule must accept a match
+  (§2.4.5), and each validator checks one layout. The second specimen above has two lines of 36
+  characters, so it is a TD2 layout; the TD1 test value in `conformance/rules.jsonl` has three lines
+  of 30 and is built from the same specimen data, its check digits computed with the rules of §3.5.
 
 ### 3.3.6 Financial
 
@@ -287,6 +292,10 @@ share a category, each id adds a suffix: `org_id.eu_vat.at`, `secret.vendor_key.
   - Not: `1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN3`.
   - Residual risk: none in practice; the checksums are cryptographic. The version byte or the bech32
     prefix sets `variant` (`btc`, `ltc`, `doge`).
+  The pack carries this as two rules, `financial.crypto_address.base58check` (the first
+  alternative of the pattern, validator `base58check`) and `financial.crypto_address.bech32` (the
+  second alternative, validator `bech32`), both in the category `financial.crypto_address`, for the
+  same reason as the MRZ rules: each validator checks one encoding.
 
 ### 3.3.7 Contact
 
@@ -320,11 +329,14 @@ share a category, each id adds a suffix: `org_id.eu_vat.at`, `secret.vendor_key.
   - Not: `1.3.6.1.4.1`, `256.1.1.1`, `192.0.2.1`.
   - Residual risk: a four-part version number (`2.7.2.1`). It is rare, and the gate passes the
     `private` variant by default.
-- **`network.ipv6`**: `[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}`, edges `word`. Validator
+- **`network.ipv6`**: `[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}`, edges `word_colon`. Validator
   `ipv6_parse`.
   - Hit: `2a00:1450:4001:82a::200e`.
   - Not: `std::vector`, `12:30:45`, `fe80::1`, `2001:db8::8a2e:370:7334`.
   - Residual risk: `fe80::1` has only two groups, an `expected_miss` and the price of the bar.
+  - Edges `word_colon` (§2.4.3), not `word`: after the scan rejects `2001:db8::8a2e:370:7334` it
+    restarts one character later (§2.4.4), and under `word` the tail `db8::8a2e:370:7334`, which is
+    a valid address outside the reserved range, would be a hit.
 - **`network.mac`**: `[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}`, edges `word`. Validators
   `separators_consistent`, `mac_not_reserved`.
   - Hit: `00:1A:2B:3C:4D:5E`.
@@ -342,27 +354,55 @@ a group, group 1 is the span replaced, so `token=` stays and only the value is m
 
 | Rule id | Pattern | Flags, edges, validators |
 |---|---|---|
-| `secret.url_credential` | `[A-Za-z][A-Za-z0-9+.-]{0,31}://([^/ \t\r\n@'"<>]{1,256})@` | edges `word_before`; validator `not_git` (the user-info `git` of an ssh remote is kept) |
-| `secret.query_param` | `[?&#;](?:access[_-]?token\|refresh[_-]?token\|id[_-]?token\|oauth[_-]?token\|private[_-]?token\|auth[_-]?token\|token\|api[_-]?key\|apikey\|key\|password\|passwd\|pwd\|secret\|client[_-]?secret\|sig\|signature\|x-amz-signature\|x-amz-credential\|x-amz-security-token\|x-goog-signature\|authorization)=([^&# \t\r\n'"<>]{0,4096})` | flags `i`; edges `none` |
-| `secret.auth_header` | `(?:proxy-)?authorization['"]?[ \t]{0,8}[:=][ \t]{0,8}['"]?((?:(?:Bearer\|Basic\|Token\|Digest)[ \t]{1,8})?[^ \t\r\n'"]{1,4096})` | flags `i`; edges `word_before` |
+| `secret.url_credential` | `[A-Za-z][A-Za-z0-9+.-]{0,31}://([^/ \t\r\n@'"<>]{1,256})@` | edges `word_before`; validators `not_git` (the user-info `git` of an ssh remote is kept) and `not_mask` |
+| `secret.query_param` | `[?&#;](?:access[_-]?token\|refresh[_-]?token\|id[_-]?token\|oauth[_-]?token\|private[_-]?token\|auth[_-]?token\|token\|api[_-]?key\|apikey\|key\|password\|passwd\|pwd\|secret\|client[_-]?secret\|signature\|sig\|x-amz-signature\|x-amz-credential\|x-amz-security-token\|x-goog-signature\|authorization)=([^&# \t\r\n'"<>]{0,4096})` | flags `i`; edges `none`; validator `not_mask` |
+| `secret.auth_header` | `(?:proxy-)?authorization['"]?[ \t]{0,8}[:=][ \t]{0,8}['"]?((?:(?:Bearer\|Basic\|Token\|Digest)[ \t]{1,8})?[^ \t\r\n'"]{1,4096})` | flags `i`; edges `word_before`; validator `not_mask` |
 | `secret.bearer` | `Bearer[ \t]{1,8}([A-Za-z0-9._~+/-]{8,4096}={0,2})` | edges `word_before` |
 | `secret.extraheader` | `x-access-token:([A-Za-z0-9+/=_-]{1,4096})` | flags `i`; edges `none` |
 | `secret.keyed_value` | `["']?(?:access[_-]token\|refresh[_-]token\|id[_-]token\|oauth[_-]token\|private[_-]token\|git[_-]token\|api[_-]key\|apikey\|x-api-key\|client[_-]secret\|password\|passwd\|secret\|token)["']?[ \t]{0,8}[:=][ \t]{0,8}["']?([^ \t\r\n"',;}\]]{6,4096})` | flags `i`; edges `word_before`; validator `not_mask` (a value already `***` is left alone) |
 | `secret.vendor_key` | `(?:ghp\|gho\|ghu\|ghs\|ghr)_[A-Za-z0-9]{20,255}\|github_pat_[A-Za-z0-9_]{20,255}\|glpat-[A-Za-z0-9_-]{16,255}\|sk-ant-[A-Za-z0-9_-]{16,255}\|sk-[A-Za-z0-9_-]{20,255}\|xox[abprs]-[A-Za-z0-9-]{10,255}\|AKIA[0-9A-Z]{16}` | edges `word` |
 
-**Additional secret shapes.** These have literal prefixes or markers, so they meet the bar. They
-were written from memory and **must be checked against gitleaks' default rules**
-(`config/gitleaks.toml`, MIT licence) before the first release:
+**Changes to the table above, made when the rule pack was written.**
+- `secret.private_key` allows a body of at most 8,192 characters, not 16,384. At 16,384 a
+  32 KiB input made of repeated headers took the scan over 100 ms (ENG-20); a PEM body over 8 KiB is
+  longer than the key of a 8192-bit RSA pair.
+- `not_mask` is also a validator of `secret.url_credential`, `secret.query_param` and
+  `secret.auth_header`, as it already was of `secret.keyed_value`. Without it, `?token=***` or
+  `Authorization: ***` would be hit again when a distillate is distilled a second time, and the
+  distiller would not be idempotent (ENG-10).
+- In `secret.query_param`, `signature` is written before `sig`. The two meant the same, because `=`
+  follows the name; the order only satisfies the rule that alternatives sharing a prefix are
+  written longest first (§2.4.1).
 
-- `secret.private_key`: `-----BEGIN (?:[A-Z]{2,10} )?PRIVATE KEY-----[A-Za-z0-9+/=:,\r\n -]{16,16384}-----END (?:[A-Z]{2,10} )?PRIVATE KEY-----`;
+**Additional secret shapes.** These have literal prefixes or markers, so they meet the bar. They
+were checked on 2026-11-13 against gitleaks' default rules (`config/gitleaks.toml`, release
+v8.30.1, MIT licence; the file is kept in this repository with its notice). The patterns below are
+the ones in the rule pack:
+
+- `secret.private_key`: `-----BEGIN (?:[A-Z]{2,10} )?PRIVATE KEY(?: BLOCK)?-----[A-Za-z0-9+/=:,\r\n -]{16,8192}-----END (?:[A-Z]{2,10} )?PRIVATE KEY(?: BLOCK)?-----`;
 - `secret.jwt`: `eyJ[A-Za-z0-9_-]{8,4096}\.eyJ[A-Za-z0-9_-]{8,4096}\.[A-Za-z0-9_-]{8,4096}`;
 - `secret.vendor_key.google`: `AIza[0-9A-Za-z_-]{35}`;
-- `secret.vendor_key.stripe`: `(?:sk|rk)_live_[0-9A-Za-z]{24,99}`;
+- `secret.vendor_key.stripe`: `(?:sk|rk)_(?:test|live|prod)_[0-9A-Za-z]{24,99}`;
 - `secret.vendor_key.npm`: `npm_[A-Za-z0-9]{36}`;
-- `secret.url_credential.slack_webhook`: `https://hooks\.slack\.com/services/T[A-Z0-9]{8,12}/B[A-Z0-9]{8,12}/[A-Za-z0-9]{24}`.
+- `secret.url_credential.slack_webhook`: `(?:https?://)?hooks\.slack\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{43,56}`.
 
 All have edges `word`, except `secret.private_key` and `secret.url_credential.slack_webhook`,
 which have `none`.
+
+| Our shape | gitleaks rule | Decision | Reason |
+|---|---|---|---|
+| `secret.private_key` | `private-key` | changed | gitleaks ends its match at `KEY` or `KEY BLOCK` and accepts any text between, 64 characters or more. Ours stays bounded and needs both markers, so a lone header is not masked. Changed to accept ` BLOCK` after `PRIVATE KEY`, which gitleaks has and which PGP armour uses (`-----BEGIN PGP PRIVATE KEY BLOCK-----`). The body minimum stays 16 characters, since the markers carry the certainty. Armour headers such as `Version:` are not in the body class, so a PGP block with them is missed; that is accepted for precision. |
+| `secret.jwt` | `jwt` | kept | gitleaks accepts a header of `ey` and 17 characters or more, a payload of the same, and an optional signature. Ours needs `eyJ` (the Base64 of `{"`) on both parts and a signature of 8 characters or more, which is stricter; an unsigned token is left alone. gitleaks' `jwt-base64` (a token Base64-encoded a second time) is not taken: it is a rarer form and its shape is long. |
+| `secret.vendor_key.google` | `gcp-api-key` | kept | The same shape, `AIza` and 35 characters of `[0-9A-Za-z_-]`. gitleaks adds an entropy threshold and an allow-list of documentation keys; the entropy test is not part of this design (rules read the value only), and a documentation key is still a key-shaped value, so it is masked. |
+| `secret.vendor_key.stripe` | `stripe-access-token` | changed | gitleaks takes `sk` and `rk` with `test`, `live` and `prod`, 10 to 99 characters. Ours was `live` only. Changed to take `test` and `prod` as well, since a test-mode key still opens an account; the minimum stays 24, as real keys are at least that long, so documentation placeholders such as `sk_test_xxxx` are not taken. |
+| `secret.vendor_key.npm` | `npm-access-token` | kept | The same shape. gitleaks reads the prefix case-insensitively; ours is `npm_` in lower case, which is how npm issues it, and an upper-case `NPM_` followed by 36 characters is far more likely a variable name. |
+| `secret.url_credential.slack_webhook` | `slack-webhook-url` | changed | gitleaks takes `services`, `workflows` and `triggers`, with an optional scheme and an unescaped dot in the host. Ours required `services` and a `T…/B…/` structure. Changed to the three paths, an optional scheme, and an escaped dot, with 43 to 56 characters after the path. Every `services` webhook has 44 to 52 characters there, so the old shape is a subset. |
+
+Where gitleaks' own test file carries a fixed value that is clearly a synthetic or documentation
+value, it is saved in `config/gitleaks-samples.json` and the rule pack must hit it (three private
+keys, two JSON Web Tokens, one webhook). The other sample values in gitleaks' tests are generated at
+random on each run, or look like real keys, so they are not copied. The conformance cases of
+these shapes are `conformance/rules.jsonl`.
 
 **Behaviour to note.**
 - Overlapping secret hits are merged before masking (§2.6). So `Authorization: Bearer abc…` gives
@@ -453,7 +493,32 @@ formed, never that it was issued.
 | `ipv6_parse` | a valid text form (eight groups, or fewer with one `::`), at least three non-empty groups; not in 2001:db8::/32 | RFC 4291, RFC 3849 |
 | `mac_not_reserved` | not `00:00:00:00:00:00`, not `ff:ff:ff:ff:ff:ff`, not `00:00:5e:00:53:00` to `00:00:5e:00:53:ff` | IEEE EUI-48, RFC 7042 |
 
+**Secrets**
+
+| Validator | Rule | Source |
+|---|---|---|
+| `not_git` | the match is `scheme://user-info@`; rejected when the user-info is exactly `git` | — |
+| `not_mask` | rejected when the match, without one trailing `@` or quote, ends with three or more `*` that follow `:`, `=`, `/`, a space, a tab or a quote: a value already masked | — |
+
 A checksum proves only that a value is well formed, never that it was issued.
+
+**Notes on the implementation, where §3.5 left a choice.**
+- `email_shape` reads the two characters after the match (§2.4.5), so that `git@github.com:org/x`
+  is refused and `git@example.org` followed by a space is not. Without them it refuses every local
+  part `git`.
+- `nino_prefix` also refuses the letters the pattern already excludes (first letter D, F, I, Q, U,
+  V; second D, F, I, O, Q, U, V), so that the validator the specification names is the one that
+  rejects `QQ 12 34 56 C`. `in_pan` and `hkid` repeat their pattern's letter classes for the same
+  reason.
+- `eu_vat` dispatches on the two-letter country prefix of the match; spaces after the prefix are
+  ignored. `mrz_td3`, `mrz_td2` and `mrz_td1`, and `base58check` and `bech32`, each check one
+  layout or encoding (§3.3.5, §3.3.6). `base58check` refuses a match of more than 64 characters,
+  which no address reaches, because decoding is quadratic in the length. `mrz_td2` applies only the
+  composite check; TD2 has no personal-number digit.
+- `cz_rc` follows the rule as written (`mod 11 mod 10`). `python-stdnum` reads a remainder of 10
+  as an invalid number from the year 1985; we read it as a check digit of 0 (§7.2, question 11).
+- `ie_pps`: the second letter's index is its place in `WABCDEFGHIJKLMNOPQRSTUV` (A is 1, B is 2, H
+  is 8).
 
 ## 3.6 Not detected, and why
 

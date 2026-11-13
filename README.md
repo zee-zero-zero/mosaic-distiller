@@ -19,7 +19,9 @@ not decide what is relevant. It is not anonymisation, and must never be describe
 
 ## Status
 
-Specification written; no code yet (2026-11-11). The specification is in [`docs/spec/`](docs/spec/):
+Engine implemented; server not yet (2026-11-13). The engine, its default rule pack, its two
+profiles and its conformance cases are in place and tested; the MCP server and the MosAIc installer
+are still to come. The specification is in [`docs/spec/`](docs/spec/):
 
 | File | What it covers |
 |---|---|
@@ -31,24 +33,57 @@ Specification written; no code yet (2026-11-11). The specification is in [`docs/
 | [`06-mosaic-integration.md`](docs/spec/06-mosaic-integration.md) | Installing into MosAIc, what MosAIc does that we rely on, and the path upstream |
 | [`07-decisions-and-open-questions.md`](docs/spec/07-decisions-and-open-questions.md) | Decisions this specification makes, and what is still open |
 
-## Layout (planned)
+## Layout
+
+What exists today is marked; the rest is planned.
 
 ```
 packages/core        the engine: a TypeScript library with no file, network or MosAIc access
-packages/server      the MCP server, over stdio
-packages/installer   registers the server in MosAIc; doctor; uninstall
+packages/server      (planned) the MCP server, over stdio
+packages/installer   (planned) registers the server in MosAIc; doctor; uninstall
 rulepacks/           the default rule pack (data) and its JSON schema
 profiles/            which action each category gets, per profile (data)
-conformance/         example cases every engine build must pass
-rigs/                test harnesses: a stdio MCP client, a fake model server, MosAIc end-to-end
-config/              data the repository checks read, such as gitleaks' rules
+conformance/         example cases every engine build must pass, and the runner's output
+rigs/                (planned) test harnesses: a stdio MCP client, a fake model server, MosAIc end-to-end
+config/              data the repository checks read: gitleaks' rules, with their licence notice
+scripts/             the tier runner, the conformance runner, the seeded-defect run, repository checks
 docs/spec/           the specification
+docs/seeded-defects.md  the table of seeded defects, written by `npm run test:seeded`
 ```
 
-## Toolchain (planned)
+## Using the engine as a library
 
-TypeScript, Node.js 20 or newer, npm workspaces, vitest, and Playwright for the end-to-end tests
-against MosAIc. The MCP SDK is pinned to the version MosAIc itself ships.
+`packages/core` is a pure TypeScript library: text and a rule pack in, a distillate and the records
+of what was replaced out. It reads no file and uses no clock, network or locale; the caller loads
+the pack and the profiles.
+
+```ts
+import { readFileSync } from "node:fs";
+import { createEngine, loadProfile, loadRulePack, serializeResult } from "@mosaic-distiller/core";
+
+const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
+const pack = loadRulePack(json("rulepacks/default.json")); // throws RulePackError { code } if refused
+const profiles = ["agent", "document"].map((n) => loadProfile(json(`profiles/${n}.json`), pack));
+const engine = createEngine({ pack, profiles, defaultProfile: "agent" });
+
+const result = engine.distill({
+  segments: [{ id: "1", text: "Write to jane.doe@northwind-mail.com." }],
+  dictionaries: [{ name: "clients", terms: ["Northwind"] }], // optional: your own sensitive words
+});
+console.log(serializeResult(result)); // compact JSON, keys in a fixed order
+// {"mode":"rules","segments":[{"id":"1","distillate":"Write to person1@example.com."}], ...}
+```
+
+`engine.distill` returns a result, or a refusal `{error: {code, message}}` whose message is fixed
+and never quotes the input. `engine.capabilities()` reports the modes, profiles, pack version and
+hash, categories and limits. The same input, rule pack and profile give the same bytes on every
+machine. Positions in the records are Unicode code points, not UTF-16 units.
+
+## Toolchain
+
+TypeScript in `strict` mode, Node.js 20 or newer, npm workspaces, vitest, ESLint and Prettier. The
+MCP SDK, esbuild and Playwright arrive with the server and the end-to-end tests. See
+[`AGENTS.md`](AGENTS.md) for the commands.
 
 ## Licence
 

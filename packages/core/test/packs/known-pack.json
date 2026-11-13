@@ -1,0 +1,55 @@
+{
+  "format": "rulepack/1",
+  "name": "known",
+  "version": "1.2.3",
+  "categories": {
+    "contact.email": { "class": "medium", "surrogate": "email" },
+    "dictionary.team": { "class": "high", "surrogate": "Colleague {n}" },
+    "gov_id.us_ssn": { "class": "high", "surrogate": "shape" },
+    "hidden.invisible": { "class": "defend", "surrogate": "shape" },
+    "inject.consumer_markup": { "class": "defend", "surrogate": "shape" },
+    "secret.keyed_value": { "class": "high", "surrogate": "mask" }
+  },
+  "rules": [
+    {
+      "id": "contact.email",
+      "category": "contact.email",
+      "kind": "pattern",
+      "pattern": "[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\\.[A-Za-z0-9-]{1,63}){1,8}",
+      "flags": "",
+      "edges": "word",
+      "validators": ["email_shape"],
+      "action": "redact"
+    },
+    {
+      "id": "gov_id.us_ssn",
+      "category": "gov_id.us_ssn",
+      "kind": "pattern",
+      "pattern": "[0-9]{3}-[0-9]{2}-[0-9]{4}",
+      "flags": "",
+      "edges": "numeric",
+      "validators": ["ssn_rules"],
+      "action": "redact"
+    },
+    {
+      "id": "secret.keyed_value",
+      "category": "secret.keyed_value",
+      "kind": "pattern",
+      "pattern": "password[ ]?=[ ]?([^ \\t\\r\\n]{6,64})",
+      "flags": "i",
+      "edges": "word_before",
+      "validators": ["not_mask"],
+      "action": "redact",
+      "variant": "keyed"
+    }
+  ],
+  "dictionaries": [
+    {
+      "name": "team",
+      "category": "dictionary.team",
+      "template": "Colleague {n}",
+      "terms": ["Ana Pop", "Ștefan"]
+    }
+  ],
+  "neutralise_literals": ["\"__payment_required\"", "<mosaic_ui", "<use_tool"]
+}

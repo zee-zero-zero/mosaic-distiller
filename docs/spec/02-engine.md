@@ -41,13 +41,19 @@ A rule pack is one UTF-8 JSON file:
   - `kind` is `pattern` or `terms`. There is no third kind: a checksum is a validator on a pattern
     rule.
   - A `pattern` rule also has `pattern`, `flags`, `edges` and `validators` (§2.4).
+  - A `terms` rule also has `terms[]`, a list of literal words matched as §2.5 says. It counts under
+    its own rule id.
   - `action` is the rule's default: `redact`, `flag`, `neutralise` or `block`. A profile may
     override it (§2.7).
   - A rule may declare a fixed `variant`, as the postcode rules do (`ca`, `gb`, `jp`). A
     validator may also set one: `ipv4_scope` marks a private address with the variant `private`
     (§3.5).
+- `categories`: each category's `surrogate` is the name of one of the built-in fake-value
+  templates of §2.8 (`shape`, `mask`, `email`, `phone`, `ipv4`, `ipv6`, `mac`, `postal`), or a
+  template that contains `{n}`. A pack must declare `hidden.invisible` and
+  `inject.consumer_markup`, the two categories the engine reports without a rule (§2.3, §2.7).
 - `dictionaries[]`: term lists the pack carries. Each has a `name`, a `category`
-  (`dictionary.<name>`), a fake-value template, and `terms[]`. The default pack carries none:
+  (`dictionary.<name>`), a fake-value `template` that contains `{n}`, and `terms[]`. The default pack carries none:
   dictionaries normally come with each request (§4.2).
 - `neutralise_literals[]`: exact strings a consumer must never receive unaltered. They are
   matched as literal text, case-sensitively, and are always neutralised (§2.7). The default pack
@@ -60,15 +66,28 @@ A rule pack is one UTF-8 JSON file:
 - a pattern that does not compile;
 - a duplicate rule id;
 - a rule or dictionary whose category is not declared;
-- a term shorter than two code points after folding (§2.5);
+- a term shorter than two code points after folding, or longer than 200 (§2.5);
 - no rules at all;
-- a category with no usable fake value for any n from 1 to 100 (§2.8).
+- a category with no usable fake value for any n from 1 to 100 (§2.8). A template that is not
+  one of the built-in names and has no `{n}` is also refused. The check cannot be made for the two
+  value-dependent templates, `shape` and `postal`; for those a request that runs out of numbers
+  fails closed (§2.11).
 
 A refused pack stops the server from starting. There is no partial load.
 
+**Loader codes.** Each refusal has its own code: `PACK_FORMAT`, `PACK_SCHEMA` (a missing, mistyped
+or unknown field), `PACK_UNKNOWN_KIND`, `PACK_UNKNOWN_VALIDATOR`, `PACK_UNKNOWN_ACTION`,
+`PACK_UNKNOWN_FLAG`, `PACK_UNKNOWN_EDGE`, `PACK_PATTERN_SUBSET`, `PACK_PATTERN_COMPILE`,
+`PACK_DUPLICATE_ID`, `PACK_UNDECLARED_CATEGORY`, `PACK_TERM_TOO_SHORT`, `PACK_TERM_TOO_LONG`,
+`PACK_NO_RULES` and `PACK_NO_FAKE`. A profile (§2.7) is refused with the codes of the same names
+with `PROFILE_` in place of `PACK_`: `PROFILE_FORMAT`, `PROFILE_SCHEMA`, `PROFILE_UNKNOWN_ACTION`
+and `PROFILE_UNDECLARED_CATEGORY`.
+
 **Version hash.** SHA-256 of the pack in the JSON Canonicalization Scheme (RFC 8785), written as
 lower-case hex. A pack holds no floating-point numbers, so every implementation's canonical form
-is the same.
+is the same. Because the order of the file never matters (below), the rules are first put in
+code-point order of their ids, the dictionaries of their names, and the terms and the literals of
+their text; the order of a rule's `validators` is part of the pack and is kept.
 
 **Order does not matter.** No output may depend on the order of rules, dictionaries, terms or
 literals in the file. Every tie is broken by the rules in §2.5, §2.6 and §2.8, never by position
@@ -103,7 +122,8 @@ segment. `start` is inclusive and `end` is exclusive.
 **Mapping a span back.** A span in the scan view maps to the original range that runs from its
 first character's source to its last character's source. That range includes any invisible
 characters removed inside it. So `536‍-22-8914`, with a zero-width joiner hidden in it, is still
-found, and its whole original range is replaced.
+found, and its whole original range is replaced. A zero-length span (§2.4.1) sits just after the
+original character of the scan-view character before it, or at 0 when nothing comes before.
 
 **Unicode version.** Implementations may follow different Unicode versions. Every result records
 the engine's Unicode version, and conformance cases avoid characters assigned after Unicode 15.0.
@@ -123,13 +143,22 @@ input. So a pattern is restricted to:
   is a zero-length span, which the secret mask fills: `token=` becomes `token=***`;
 - character classes written in ASCII: `[0-9]`, never `\d`, `\w`, `\s` or `\b`, whose meanings
   differ between engines. A literal may be any character, such as `〒`;
-- every repetition bounded, as `{m,n}`; never `*` or `+`;
+- every repetition bounded, as `{m,n}` with `n` at most 65,536 and at least 1; never `*` or `+`.
+  `?` is the bound `{0,1}` and is allowed; a lazy `?` after a bound, and `{m,}`, are not;
 - a quantified group only when each iteration begins with a character the repetition before it
   cannot match. `(?:\.[0-9]{1,3}){3}` is allowed; `([a-z]{1,9}){1,9}` is not. This keeps a
-  backtracking engine linear on hostile input;
+  backtracking engine linear on hostile input. The loader checks groups whose maximum is above 1:
+  the characters a variable-length repetition just before the group can consume, and the characters
+  a variable-length repetition at the end of the group's body can consume, must not include any
+  character the group can begin with. A repeated capturing group is refused;
 - alternatives that share a prefix written longest first: `NW|N`, never `N|NW`. Every engine
   takes the first alternative that matches, and the edge check would otherwise reject the short
-  one instead of trying the long one.
+  one instead of trying the long one. The loader refuses this where the alternatives end the
+  pattern and are made only of single characters of fixed width. Where something must follow
+  (`(?:signature|sig)=`), backtracking tries the next alternative, and the order is free.
+- escapes only of the syntax characters `^$\.*+?()[]{}|` and `/`, of `-` inside a class, and
+  `\t`, `\n` and `\r`: anything else (`\d`, `\x41`, `\p{L}`, a backreference) is refused. The
+  wildcard `.`, empty groups and alternatives, and POSIX classes are refused.
 
 The loader checks the subset by parsing each pattern itself, not by compiling it, because
 JavaScript accepts constructs the subset forbids.
@@ -140,7 +169,9 @@ JavaScript accepts constructs the subset forbids.
 - `m`: `^` and `$` also match at a line break. **A line break is U+000A only.** A lone `\r`,
   U+2028 and U+2029 are not line breaks.
 
-> **TypeScript.** Patterns are compiled with the `u` flag, so that a negated class such as
+> **TypeScript.** Patterns are compiled with the flags `g` and `u` (plus `i` when the rule has
+> `i`, and `d` when it has a group, to read group 1's position), and driven by `lastIndex`. `u` is
+> there so that a negated class such as
 > `[^/ \t\r\n@'"<>]` never matches half of a surrogate pair. With `u`, JavaScript's `i` uses
 > Unicode case folding. That is still equivalent to ASCII-only here, because the only two
 > non-ASCII characters that fold to ASCII letters, the long s (U+017F) and the Kelvin sign
@@ -159,6 +190,7 @@ Edges replace `\b` and lookbehind. They are checked in code, after a match.
 | `word` | the character before it or after it is `[A-Za-z0-9_]` |
 | `numeric` | as `word`; or the character before it is `.` or `-` with a digit before that; or the character after it is `.` or `-` with a digit after that |
 | `word_before` | the character before it is `[A-Za-z0-9_-]`. Nothing after it is checked, because a URL's user-info is followed by its host. |
+| `word_colon` | as `word`; or the character before it or after it is `:`. Used for IPv6, so that the tail of a rejected address (`db8::8a2e:370:7334` inside `2001:db8::8a2e:370:7334`) is not taken as an address of its own after the scan restarts (§2.4.4) |
 | `none` | never |
 
 The characters checked are those of the scan view around the whole match, not around group 1.
@@ -182,7 +214,8 @@ Every implementation scans in exactly this way, which is what keeps outputs iden
 ### 2.4.5 Validators
 
 `validators` names functions from the closed list of §3.5. They run in order on the matched text
-(the whole match, not group 1). A hit is recorded only if every one accepts it. A validator may
+(the whole match, not group 1). A validator is also given the next two characters of the scan view
+after the match, when there are any; only `email_shape` reads them, to refuse `git@host:path`. A hit is recorded only if every one accepts it. A validator may
 also set the hit's `variant`.
 
 **No validator depends on the date of the run.** Where an identifier encodes a two-digit year,
@@ -240,7 +273,9 @@ this order of families: `secret`, `gov_id`, `health_id`, `financial`, `contact`,
 `vehicle`, `org_id`, `dictionary`. On a tie within a family, the rule id that comes first in
 code-point order wins.
 
-Defend hits (families `inject` and `hidden`) are not merged with redaction hits. They are
+A merged span that holds a neutralise literal (§2.7) takes that literal's category and action,
+whatever the lengths. Defend hits (the categories of class `defend`) are not merged with redaction
+hits. They are
 resolved among themselves the same way, and recorded as findings. Where a defend span lies inside
 a redacted span, the redaction covers it and the finding is still recorded.
 
@@ -270,6 +305,12 @@ Two profiles are built in:
 | `hidden.encoded_blob` | flag | flag |
 | `hidden.invisible` | flag (the characters are always deleted) | flag |
 | `inject.consumer_markup` (the literals) | neutralise | neutralise |
+
+A profile is a file `{"format": "profile/1", "name": "agent", "actions": {"<category>" or
+"<category>/<variant>": "<action>"}}`; `profiles/agent.json` and `profiles/document.json` are the
+two built-in ones. A category that a profile does not name keeps its rule's default action. A key
+may name only a declared category, and a value only a known action (§2.2). `block` also applies to
+`hidden.invisible`: a request holding any removed invisible character is then blocked.
 
 `agent` is for text that an AI with tools will read. `document` is for text about prompts and
 chats, where role labels and template tokens are content, not attacks. No built-in profile blocks.
@@ -317,6 +358,23 @@ original text.
 **Merged spans** (§2.6) get the fake of their winning category, and are canonicalised from the
 whole merged text.
 
+**Details the table leaves open.**
+- The built-in template names of a category's `surrogate` (§2.2) are the rows above: `email`,
+  `phone`, `ipv4`, `ipv6`, `mac`, `postal` (the `ca` and `jp` forms, and the shape-preserving form
+  otherwise), `mask` (`***`) and `shape`. Any other surrogate is a template that contains `{n}`.
+- The shape-preserving form is taken from the span's scan-view text, not its original text, so it
+  never carries a removed invisible character. Letters and digits are those of Unicode (`\p{L}`,
+  `\p{Nd}`).
+- The IPv6 template is `2001:db8::{n}` up to n = 65,535, and the MAC template up to 255; after
+  that they run out like the others.
+- `n` counts per category, not per variant: the third postal code of a request has n = 3 whatever
+  its variant.
+- "The smallest n not yet used" means not yet given to another value. A number skipped for one
+  value (its fake was hit, or taken) stays free for a later value, whose fake may differ.
+- If the shape-preserving form cannot hold n, because the value has too few digit positions (a
+  role label has none), the fake is `[redacted {n}]`, which is checked like any other fake.
+- Two requests' fakes are not tied to each other: only the request's own input is checked.
+
 ## 2.9 The distillate
 
 Per segment, the distillate is the original text with three changes:
@@ -326,6 +384,10 @@ Per segment, the distillate is the original text with three changes:
 
 Nothing else changes. In particular the distillate is not NFKC-normalised: a user's own text
 keeps its characters.
+
+A neutralised defend span (§2.6) that overlaps a redacted span is united with it, and the
+redaction's fake covers the union; the finding of the defend span is still recorded with its own
+range.
 
 ## 2.10 The result
 
@@ -350,13 +412,15 @@ For the one-segment input `Write to jane.doe@northwind-mail.com.`:
 - A **removal** is `{segment, start, end, category, variant?, rule, fake}`. `start` and `end`
   are in the original segment. The fake is safe to show.
 - A **finding** is `{segment, start, end, category, variant?, rule, action}`.
-- **Warnings** are the engine's own notices, with a code: a lone surrogate replaced by U+FFFD
-  (`LONE_SURROGATE`), for example.
+- **Warnings** are the engine's own notices: `{code, segment}`, one per segment and code. A lone
+  surrogate replaced by U+FFFD is `LONE_SURROGATE`.
 - **Counters**, per rule: `evaluated` is the number of segments the rule ran on; `candidates`,
   matches before checks; `rejected_edge` and `rejected_validator`; `fired`, hits recorded. Term
   lists count per dictionary.
 - **Blocked.** If any span's action is `block`, the result has `"blocked": {"category", "rule"}`,
-  no `segments`, no `removals` and no `findings`, and the provenance.
+  no `segments`, no `removals`, no `findings` and no `warnings`, and the provenance, in the order
+  `mode`, `blocked`, `provenance`. `blocked` names the first blocking span, in the order of the
+  records.
 - No part of a result ever holds removed text, a term, or any other input text except inside a
   distillate.
 
@@ -377,7 +441,16 @@ That makes results comparable byte for byte.
 Limits are exact: a request at the limit passes, and one over it is refused with no partial
 result. An empty segment text is allowed and gives an empty distillate.
 
-**Fail closed.** Any internal error refuses the request with `INTERNAL` and no distillate. The
+The checks are made in this order, and the first failure is the refusal: the shape of the request
+(`INVALID_ARGUMENTS`: a missing, mistyped or unknown argument, or an objective that is not
+`store`, `forward` or `task`); the mode; the profile; the number of segments; each segment id in
+turn (its form, then whether it repeats); the number of dictionaries; each dictionary (its name is
+1 to 32 characters of `[a-z0-9_]`, unique, and not one the pack already carries; its template
+contains `{n}`; all otherwise `INVALID_ARGUMENTS`); the number of terms; each term's folded length;
+the total size.
+
+**Fail closed.** Any internal error refuses the request with `INTERNAL` and no distillate. A
+category that runs out of fakes (§2.8) is an internal error. The
 engine never returns the original text in place of a distillate.
 
 **Speed.** One megabyte dense with matches finishes within 2 seconds on an ordinary laptop. A

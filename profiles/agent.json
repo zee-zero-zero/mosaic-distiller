@@ -1,0 +1,17 @@
+{
+  "format": "profile/1",
+  "name": "agent",
+  "actions": {
+    "network.ipv4/private": "redact",
+    "network.ipv4/loopback": "redact",
+    "network.ipv4/link_local": "redact",
+    "inject.special_token": "neutralise",
+    "inject.tool_markup": "neutralise",
+    "inject.md_image_remote": "neutralise",
+    "inject.consumer_markup": "neutralise",
+    "inject.role_label": "flag",
+    "inject.override_phrase": "flag",
+    "hidden.encoded_blob": "flag",
+    "hidden.invisible": "flag"
+  }
+}
