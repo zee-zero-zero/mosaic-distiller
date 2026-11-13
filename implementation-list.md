@@ -46,7 +46,7 @@ first needs it.
 | Profile file format | `profiles/agent.json` and `profiles/document.json`, each `{"format": "profile/1", "name": "...", "actions": {"<category>" or "<category>/<variant>": "<action>"}}`. A category that a profile does not name keeps its rule's default action. | §2.7 | 1 |
 | Loader refusal codes | `PACK_FORMAT`, `PACK_SCHEMA`, `PACK_UNKNOWN_KIND`, `PACK_UNKNOWN_VALIDATOR`, `PACK_UNKNOWN_ACTION`, `PACK_UNKNOWN_FLAG`, `PACK_UNKNOWN_EDGE`, `PACK_PATTERN_SUBSET`, `PACK_PATTERN_COMPILE`, `PACK_DUPLICATE_ID`, `PACK_UNDECLARED_CATEGORY`, `PACK_TERM_TOO_SHORT`, `PACK_NO_RULES`, `PACK_NO_FAKE`. The same codes apply to profiles, with `PROFILE_` in place of `PACK_`. | §2.2 | 1 |
 | Determinism check | REP-4: a test fails if `packages/core/src` uses `Date`, `Math.random`, `toLocaleLowerCase`, `toLocaleUpperCase`, `localeCompare`, `Intl`, `\d`, `\w`, `\s` or `\b`. The one exception is `src/pattern/subset.ts`, which must name those escapes in order to refuse them. Sorting compares code points. | §5.9 | 1 |
-| Case coverage check | REP-5: a test reads every case id in `docs/spec/05-testing.md` and fails if any id has no test whose name starts with it. The exception is ids listed in `scripts/case-ids-pending.txt`. That file shrinks with each commit and is deleted in commit 3. | §5.9 | 1 |
+| Case coverage check | REP-5: a test reads every case id in `docs/spec/05-testing.md` and fails if any id has no test whose name starts with it. The exception is ids listed in `scripts/case-ids-pending.txt`. That file shrank with each commit and was deleted in commit 3. | §5.9 | 1 |
 | Deadline mechanism | The engine runs in a `worker_threads` worker. When a call passes 20 seconds, the server terminates that worker, answers `DEADLINE` and starts a new one. A synchronous engine cannot be interrupted in the same thread. | §4.5 | 2 |
 | Outbound neutralisation strings | In every text the server returns, `<use_tool` becomes `[neutralised: use_tool]`, `<mosaic_ui` becomes `[neutralised: mosaic_ui]`, and `__payment_required` becomes `[neutralised: payment_required]`, in any case of letters; quotes round the payment key stay, so that JSON stays valid and no longer holds `"__payment_required"` (as built; §7.1). None of these contains `"` or `\`. MosAIc opens a payment screen when a tool result's first text block contains `"__payment_required"` (with the quotes) and parses as JSON with that key set. | §4.5 | 2 |
 | Start-up failure on stderr | One line: `DISTILLER_START_FAILED <code>`, where `<code>` is a loader code. Nothing else. | §4.1 | 2 |
@@ -110,8 +110,8 @@ under the key of `package-lock.json`.
 | `local` | every push and pull request | ubuntu-latest, Node 20 | `npm run build`, `npm run test:local` |
 | `installer-os` (commit 2) | every push to `master` | macos-latest and windows-latest, Node 20 | the installer's tests only. macOS and Windows minutes cost more, so nothing else runs there. |
 | `pools-full` | every push to `master` | ubuntu-latest | every pool in full, and the conformance runner in full |
-| `e2e-mosaic` (commit 3) | every push to `master` | ubuntu-latest under `xvfb-run` | `npm run test:e2e` |
-| `quirks-mosaic` (commit 3) | manual (`workflow_dispatch`), with the MosAIc commit as an input that defaults to the pinned one | ubuntu-latest under `xvfb-run` | `npm run test:quirks` |
+| `e2e-mosaic` (commit 3, as built) | every push and pull request | ubuntu-latest under `xvfb-run`; MosAIc's build cached under the hash of `rigs/e2e/mosaic-pin.json` | `npm run test:e2e` |
+| `quirks-mosaic` (commit 3, as built) | every push to `master`, and manual (`workflow_dispatch`); no MosAIc-commit input, the pin is edited instead | as `e2e-mosaic` | `npm run test:quirks` |
 
 ---
 
@@ -551,7 +551,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
     - the byte-preserving edit replaced by re-serialisation (INS-1 fails);
     - the temporary-file rename replaced by a direct write (INS-3 fails).
   - Shrink `scripts/case-ids-pending.txt` to the MOS and QRK ids.
-- [ ] **2.7 Try it in a real MosAIc by hand** (Linux, a development build of MosAIc at
+- [x] **2.7 Try it in a real MosAIc** (done by commit 3's rig, MOS-1, not by hand; §7.2 question 14) (Linux, a development build of MosAIc at
   `7af40c8`, a throwaway profile directory through `XDG_CONFIG_HOME`).
   1. Run `install`.
   2. Start MosAIc and open the MCP page.
@@ -562,7 +562,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
   Record the result and the MosAIc version in the commit report. This is a smoke check, not a
   case; commit 3 automates it as MOS-1.
 
-### Status of commit 2 (done 2026-11-13 except step 2.7; proposed, not committed)
+### Status of commit 2 (done 2026-11-13; committed by the maintainer as `d09a609`; step 2.7 was done by commit 3's rig)
 
 Steps 2.1 to 2.6 are done and ticked; the work is in the tree, unstaged. Step 2.7 (the try in a real MosAIc) is **not** done: it needs a
 development build of MosAIc and opens its window on the maintainer's screen (§7.2, question 14).
@@ -611,7 +611,7 @@ All of these must hold before the commit is proposed:
   the harness.
 - [x] `npm run test:local` passes, including SRV-1 to SRV-12 and INS-1 to INS-7.
 - [x] `npm run test:seeded`: every row fails as expected, the new ones included.
-- [ ] Step 2.7 done, with its result in the report. **Not done** (question 14).
+- [x] Step 2.7 done, with its result in the report. Done by MOS-1 in commit 3 (question 14).
 - [x] The specification sections named for commit 2 are updated.
 
 Proposed subject: `feat(server): add the MCP server and the MosAIc installer`.
@@ -632,7 +632,7 @@ After this commit every automated tier of §5.2 exists and passes.
 
 ### Steps
 
-- [ ] **3.1 Build MosAIc for the rig** (`rigs/e2e/build-mosaic.mjs`).
+- [x] **3.1 Build MosAIc for the rig** (`rigs/e2e/build-mosaic.mjs`).
   - Clone `https://github.com/hypercycle-development/mosaic-companion` into
     `rigs/e2e/.mosaic/<commit>/` at the pinned commit, `7af40c8`, held in
     `rigs/e2e/mosaic-pin.json`.
@@ -642,7 +642,7 @@ After this commit every automated tier of §5.2 exists and passes.
     marker file is written last, so an interrupted build is redone and a finished one is not
     (`AGENTS.md`, rule 4).
   - CI caches the directory under the commit as key.
-- [ ] **3.2 The launch fixture** (`rigs/e2e/fixtures.ts`).
+- [x] **3.2 The launch fixture** (`rigs/e2e/fixtures.ts`).
   - Each test gets a fresh temporary `XDG_CONFIG_HOME`, so MosAIc gets a fresh profile and the
     user's real one is never touched.
   - It runs the **real installer** against that profile.
@@ -653,7 +653,7 @@ After this commit every automated tier of §5.2 exists and passes.
   - Selectors are kept in one file, `rigs/e2e/selectors.ts`, taken from MosAIc's own
     `tests/e2e/mcp.spec.ts` where it has them. When a MosAIc release changes its UI, only that
     file changes.
-- [ ] **3.3 The fake model** (`rigs/fake-model/`).
+- [x] **3.3 The fake model** (`rigs/fake-model/`).
   - An HTTP server on `127.0.0.1` with a random port, speaking the part of Ollama's API that
     MosAIc's ollama provider uses. Read MosAIc's `src/services/AIService.ts` for which endpoints,
     and for the NDJSON stream format.
@@ -663,7 +663,7 @@ After this commit every automated tier of §5.2 exists and passes.
   - It can misbehave on request: a truncated stream, a stalled stream, malformed JSON.
   - *Tests of the fake itself:* it replays a script exactly, and records the system prompt.
     Prove this with a plain HTTP client before any MosAIc test uses it.
-- [ ] **3.4 The MOS cases** (`rigs/e2e/tests/`).
+- [x] **3.4 The MOS cases** (`rigs/e2e/tests/`).
   - MOS-1: the MCP page lists `distiller` and calls `distill`; the distillate is shown.
   - MOS-2: a test add-on with the `mcp:call` permission, loaded from a directory through MosAIc's
     Dev corner (`MOSAIC_ADDON_DEV=1`; MosAIc's `docs/build-an-extension.md`), calls `distill`.
@@ -674,12 +674,12 @@ After this commit every automated tier of §5.2 exists and passes.
     Assert this from the DOM: the payment modal's selector is absent.
   - MOS-5: every chat agent's system prompt, as the fake model records it, holds both
     descriptions whole.
-- [ ] **3.5 The quirk suite** (`rigs/e2e/quirks/`).
+- [x] **3.5 The quirk suite** (`rigs/e2e/quirks/`).
   - QRK-1 to QRK-7, each against a small test server in `rigs/e2e/quirk-servers/`, not ours, as
     §5.8 says.
   - QRK-3 also confirms that our neutralisation defeats MosAIc's detection.
   - QRK-1 sleeps 61 s, so it runs only in `quirks-mosaic`, never in `e2e-mosaic`.
-- [ ] **3.6 Drafts for MosAIc's maintainers** (`docs/upstream/`). Documentation only; nothing is
+- [x] **3.6 Drafts for MosAIc's maintainers** (`docs/upstream/`). Documentation only; nothing is
   sent from here.
   - `example-pr.md`: the stage-2 pull request of §6.4. It holds the issue text that comes first,
     the PR description, and the files of a short `examples/` entry calling the distiller from an
@@ -690,7 +690,7 @@ After this commit every automated tier of §5.2 exists and passes.
     - the quirk case that pins it;
     - the consequence;
     - the request.
-- [ ] **3.7 Finish.**
+- [x] **3.7 Finish.**
   - Delete `scripts/case-ids-pending.txt`; REP-5 now requires every case.
   - Add rows to the seeded-defect table for:
     - the fixture skipping the installer (MOS-1 fails);
@@ -700,15 +700,50 @@ After this commit every automated tier of §5.2 exists and passes.
     - the layout loses every "(planned)" mark.
   - Add the `e2e-mosaic` and `quirks-mosaic` jobs.
 
+### Status of commit 3 (done 2026-11-13; proposed, not committed)
+
+All of steps 3.1 to 3.7 are done and every gate command passes (run on this machine, on the
+maintainer's display, against MosAIc `7af40c8`):
+
+| Gate | Result |
+|---|---|
+| `npm run lint` | clean |
+| `npm run test:e2e` | 13 passed, twice in a row, each test on a fresh profile (about 1.4 min each run) |
+| `npm run test:quirks` | 17 passed, in 2.5 min (QRK-1 waits a minute) |
+| `npm run test:local` | 29 files, 2,941 passed, in 129 s (budget 15 min) |
+| `npm run test:seeded` | all 14 rows caught, the 2 new ones included (`docs/seeded-defects.md`) |
+| REP-5 | every case id has a test; there is no pending file |
+
+What differs from the list:
+
+- **Display.** The machine has no `xvfb`, so the rig ran on the maintainer's display (`DISPLAY=:0`),
+  and each test opened a MosAIc window there. CI uses `xvfb-run`; that is untested here.
+- **First-run screens, as found at `7af40c8`** (recorded in `docs/spec/05-testing.md` §5.8): a
+  "Reduced Security Mode" banner (the rig passes `--no-sandbox`) and four onboarding screens, welcome,
+  features, agent (skipped) and ready.
+- **Added cases.** FM-1 to FM-3 test the fake model on its own; MOS-4 has a seventh input, a segment
+  id that is `__payment_required`, because the engine's own rule already catches the key in text,
+  and only this input reaches the server's outbound layer; QRK-3 has a control, a signal in the
+  first block, which does open the payment screen on both paths.
+- **The MCP page does not scan results for payment signals**; only the chat and add-on paths do, so
+  QRK-3 uses those two.
+- **A chat agent is given the first text block only** (QRK-2), so a signal in the second block never
+  reaches an agent.
+- **Seeded defects:** two rows, in a new `e2e` tier (Playwright, a display, MosAIc's build linked into
+  the copy).
+- **The gate says `xvfb-run`; it was run on a real display instead** (no `xvfb` here).
+- **Not run:** the CI jobs `e2e-mosaic` and `quirks-mosaic`, and the installer on macOS and Windows.
+- `docs/upstream/` holds six drafts and a README; nothing is sent.
+
 ### Gate for commit 3
 
 All of these must hold before the commit is proposed:
-- Commits 1 and 2's gates still hold.
-- `xvfb-run npm run test:e2e` passes locally, twice in a row, from a fresh profile each time.
-- `xvfb-run npm run test:quirks` passes against `7af40c8`.
-- REP-5 passes with no pending ids.
-- `npm run test:seeded`: every row fails as expected.
-- `docs/upstream/` holds the drafts. They contain no claim beyond §1.2.
+- [x] Commits 1 and 2's gates still hold.
+- [x] `xvfb-run npm run test:e2e` passes locally, twice in a row, from a fresh profile each time.
+- [x] `xvfb-run npm run test:quirks` passes against `7af40c8`.
+- [x] REP-5 passes with no pending ids.
+- [x] `npm run test:seeded`: every row fails as expected.
+- [x] `docs/upstream/` holds the drafts. They contain no claim beyond §1.2.
 
 Proposed subject: `test(e2e): run the distiller inside a real MosAIc, and draft the upstream issues`.
 

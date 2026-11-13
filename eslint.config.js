@@ -15,12 +15,18 @@ export default tseslint.config(
   {
     files: ["**/*.mjs", "**/*.js"],
     languageOptions: {
-      globals: { process: "readonly", console: "readonly", URL: "readonly" },
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        URL: "readonly",
+        setTimeout: "readonly",
+      },
     },
   },
   {
     // Tests read results as loosely typed JSON; the engine's own sources stay strictly typed.
-    files: ["**/test/**/*.ts", "scripts/**/*.ts"],
+    // The end-to-end rig reaches into MosAIc's untyped `window.electronAPI`.
+    files: ["**/test/**/*.ts", "scripts/**/*.ts", "rigs/e2e/**/*.ts"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
 );

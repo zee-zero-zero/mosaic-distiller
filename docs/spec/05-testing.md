@@ -171,13 +171,36 @@ accepts any address, so a chat agent can be pointed at it and runs for free. Per
 chosen replies, including MosAIc's `<use_tool>` markup, misbehaves on request, and records the
 system prompt it received.
 
+Before any MosAIc test uses the fake model, it is tested on its own with a plain HTTP client:
+
+| Id | Case | Kind | Input → expected |
+|---|---|---|---|
+| FM-1 | It replays a script exactly | confirmatory | A streamed reply with markup and non-ASCII text, read as MosAIc's ollama provider reads it → the whole content, in chunks, ending with a done object; replies come in order; an exhausted script answers with a fixed sentence |
+| FM-2 | It records what it receives | confirmatory | A request with a system prompt → the prompt, the model, the stream flag and the last message are recorded; MosAIc sends its system prompt as a first message that starts `[System Context]`, and that counts |
+| FM-3 | It misbehaves on request | adversarial | A truncated, a stalled and a malformed stream → a cut stream with no done object, silence after the first chunk, lines that are not JSON beside the content |
+
+**How the rig starts MosAIc.** Each test gets a fresh temporary profile (`HOME` and the XDG
+directories), runs the real installer against it, and launches MosAIc with Playwright's
+`_electron.launch`, as MosAIc's own tests do. On a fresh profile, at `7af40c8`, MosAIc shows a
+"Reduced Security Mode" banner when it runs without its sandbox (the rig passes `--no-sandbox`,
+because the downloaded Electron's helper is not set-uid; the banner is informational and stays),
+then an onboarding of four screens: welcome, features, agent, ready. The fixture passes them the
+way a user does, skipping the agent step, and records which appeared. The chat reads the list of
+connected servers once, when it opens, so the fixture waits for every server of the profile to
+connect before it opens a chat. Every selector is in `rigs/e2e/selectors.ts`. The rig needs a
+display; on a machine with none, run it under `xvfb-run`.
+
 | Id | Case | Kind | Input → expected |
 |---|---|---|---|
 | MOS-1 | The MCP page lists and calls `distill` | confirmatory | Installed by the real installer → the tool listed; a call renders the distillate |
-| MOS-2 | An add-on calls `distill` | confirmatory | A test add-on with the `mcp:call` permission → the result arrives |
+| MOS-2 | An add-on calls `distill` | confirmatory | A test add-on with the `mcp:call` permission, loaded through the Dev corner (`MOSAIC_ADDON_DEV=1`; the folder dialog is answered with a copy of `rigs/e2e/test-addon/`, whose directory name must equal its manifest id) → the result arrives |
 | MOS-3 | A chat agent's call reaches `distill` | confirmatory | The fake model emits a valid tool call → the result reaches the chat |
-| MOS-4 | A misbehaving model does no harm | adversarial | The fake model emits a wrong server name, arguments as a string, prose inside the arguments, two tool tags, a truncated tag, and arguments holding `"__payment_required"` → our server stays up; no payment screen opens; each outcome recorded |
+| MOS-4 | A misbehaving model does no harm | adversarial | The fake model emits a wrong server name, arguments as a string, prose inside the arguments, two tool tags, a truncated tag, arguments holding `"__payment_required"`, and a segment id that is `__payment_required` (the one input the engine's own rule does not see, so only the outbound layer defends it) → our server stays up; no payment screen opens; each outcome recorded as an attachment of the test |
 | MOS-5 | Every chat agent receives our descriptions intact | abstract | The fake model records each agent's system prompt → each description present, whole |
+
+**Seeded defects, inside MosAIc.** The fixture skipping the installer → MOS-1 fails. Outbound
+neutralisation off → MOS-4 fails (through the segment-id case). These rows run with Playwright,
+need a display, and are in the seeded-defect run's `e2e` tier.
 
 **The quirk suite (`quirks-mosaic`).** These pin each MosAIc behaviour this design relies on, so
 that a MosAIc release that changes one fails here first. Each runs against a small test server,
@@ -187,7 +210,7 @@ not ours. Before the pinned commit moves, this suite runs on the new release.
 |---|---|---|---|
 | QRK-1 | A tool call times out after 60 seconds | `MCPClient.ts:369-377`; the SDK's default | A test server sleeping 61 s → MosAIc's timeout error |
 | QRK-2 | Only text content is shown | `MCPClient.ts:503-512` | A result with an image block → only the text shown |
-| QRK-3 | How a payment signal is detected in a tool result | `electron/addons/api/mcp.ts:17-71`; `src/services/ActionParser.ts:132-139` | The signal in the second block; prose before the JSON; the key set to `false` → not detected, on both the chat and add-on paths. Our neutralisation (§4.5) is then confirmed to defeat detection. |
+| QRK-3 | How a payment signal is detected in a tool result | `electron/addons/api/mcp.ts:17-71`; `src/services/ActionParser.ts:132-139` | The signal in the second block; prose before the JSON; the key set to `false` → not detected, on both the chat and add-on paths; a control, the signal alone in the first block, does open the payment screen on both, so that "not detected" can fail. Our neutralisation (§4.5) is then confirmed to defeat detection. The MCP page's own call does not scan results, so it is not a path of this case. |
 | QRK-4 | The entry's `env` overrides MosAIc's environment | `MCPClient.ts:159-165` | A variable set in both → the entry's value |
 | QRK-5 | Chat history keeps tool arguments and results | `src/components/Chatview.tsx:666-853` | A `distill` call from chat → the stored session holds the arguments, which contain the original text |
 | QRK-6 | Every chat agent sees every server's tools | `Chatview.tsx:563-575`; `ActionParser.ts:177-199` | Two servers and two agents → both agents' prompts list both |
@@ -205,7 +228,7 @@ is passed on after it, not what the chat already holds (§6.5).
 | REP-2 | Claims | Documentation and descriptions → the whole words "anonymise", "anonymised", "anonymous", "anonymisation", "isolated" and "isolation", in either spelling, appear only in a sentence that denies them. Unicode's "isolates", a kind of invisible character, is not one of them. |
 | REP-3 | Specification links | Every `§` reference in `docs/spec/` resolves to a heading |
 | REP-4 | Determinism | `packages/core/src` uses none of `Date`, `Math.random`, `toLocaleLowerCase`, `toLocaleUpperCase`, `localeCompare`, `Intl`, and none of the regular-expression escapes `\d`, `\w`, `\s`, `\b` (read from the syntax tree, so comments do not count). The one exception is `src/pattern/subset.ts`, which names the escapes in order to refuse them. Sorting compares code points |
-| REP-5 | Case coverage | Every case id in this document has at least one test whose name starts with it, except the ids listed in `scripts/case-ids-pending.txt` (which shrinks with each commit and is deleted when the last automated case exists, and in which an id that already has a test is an error), and the cases that are manual by nature: REP-1 and MAN-* |
+| REP-5 | Case coverage | Every case id in this document has at least one test whose name starts with it, except the cases that are manual by nature: REP-1 and MAN-* |
 
 ## 5.10 Manual tests
 

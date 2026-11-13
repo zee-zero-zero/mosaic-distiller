@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- Test add-on of the end-to-end rig (step 3.4). It holds the `mcp:read` and `mcp:call` permissions.
+     Every 300 ms it looks for `jobs.json` in its data directory: a list of
+     {id, server, tool, args}. For each job it has not run, it calls `mcp.callTool` and writes
+     `results/<id>.json` as {ok: true, result} or {ok: false, code, message}. `args` is passed as it
+     is, whatever its type. Once `ready.json` exists, the add-on is listening. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Distiller Test Add-on</title>
+  </head>
+  <body>
+    <h1>Distiller Test Add-on</h1>
+    <pre id="log">starting</pre>
+    <script type="module">
+      const api = window.addonAPI;
+      const log = document.getElementById("log");
+      const done = new Set();
+      await api.init();
+      await api.files.mkdir("results");
+      await api.files.write("ready.json", JSON.stringify({ ready: true }));
+      log.textContent = "ready";
+      async function tick() {
+        let jobs = [];
+        try {
+          jobs = JSON.parse(await api.files.read("jobs.json"));
+        } catch {
+          return;
+        }
+        for (const job of jobs) {
+          if (done.has(job.id)) continue;
+          done.add(job.id);
+          let out;
+          try {
+            const result = await api.mcp.callTool(job.server, job.tool, job.args);
+            out = { ok: true, result };
+          } catch (e) {
+            const { code, message } = api.parseError(e);
+            out = { ok: false, code, message };
+          }
+          await api.files.write(`results/${job.id}.json`, JSON.stringify(out));
+          log.textContent = `last: ${job.id}`;
+        }
+      }
+      setInterval(tick, 300);
+    </script>
+  </body>
+</html>

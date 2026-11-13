@@ -1,0 +1,22 @@
+{
+  "name": "@mosaic-distiller/e2e",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "description": "Test rig: runs the distiller inside a real MosAIc Companion, built at a pinned commit, driven by Playwright.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build-mosaic": "node build-mosaic.mjs",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:quirks": "playwright test --config playwright.quirks.config.ts"
+  },
+  "dependencies": {
+    "@mosaic-distiller/fake-model": "0.1.0",
+    "@mosaic-distiller/mcp-harness": "0.1.0",
+    "@modelcontextprotocol/sdk": "1.28.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  }
+}

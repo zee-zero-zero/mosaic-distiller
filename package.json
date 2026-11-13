@@ -17,6 +17,8 @@
     "test:quick": "node scripts/run-tier.mjs quick",
     "test:local": "node scripts/run-tier.mjs local",
     "test:full": "node scripts/run-tier.mjs full",
+    "test:e2e": "npm run build && npm run test:e2e -w @mosaic-distiller/e2e",
+    "test:quirks": "npm run build && npm run test:quirks -w @mosaic-distiller/e2e",
     "test:seeded": "node scripts/seeded-defects.mjs",
     "conformance": "node --import tsx scripts/conformance.mjs --full",
     "build": "npm run build -w @mosaic-distiller/core && npm run build -w @mosaic-distiller/server && npm run build -w @mosaic-distiller/installer"

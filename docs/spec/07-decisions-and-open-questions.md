@@ -52,6 +52,12 @@ release, and each is stated where it applies.
 | An empty `mcp-plugins.json` counts as `[]`; nothing is written when nothing changes; a read-only file that must change is refused | §6.3 | The cases of INS-1 that the specification left open |
 | `doctor` reports MosAIc's version as "unknown (not detected)" | §6.3 | Nothing on disk says which version is installed |
 | REP-4, a check of nondeterminism by syntax tree; REP-5, a check that every case has a test | §5.9 | The two properties the principles of §1.5 promise must not rest on review |
+| The fake model takes a message whose role is `system`, or else the first message that starts `[System Context]`, as the system prompt | §5.8 | MosAIc sends its tool prompt as a user message with that prefix (`Chatview.tsx`, `sendMessage`), so "the system prompt" is that message |
+| The rig launches MosAIc with `--no-sandbox` and accepts its "Reduced Security Mode" banner | §5.8 | The downloaded Electron's sandbox helper is not set-uid, and Ubuntu 24.04 restricts user namespaces; the banner is informational |
+| The test add-on is loaded by answering the folder dialog with a copy of `rigs/e2e/test-addon/`, named as its manifest id, and gets its calls as `jobs.json` in its data directory | §5.8 | The Dev corner's dialog is native; MosAIc requires the directory name to equal the id; a webview cannot be driven by Playwright |
+| The rig's fixture options are objects (`{entries}`, `{vars}`) | §5.8 | Playwright reads a two-element array given to `test.use` as its own `[value, options]` tuple |
+| The seeded-defect run has an `e2e` tier: Playwright in `rigs/e2e` of the copy, with MosAIc's build linked from the original | §5.3 | Two rows need a real MosAIc |
+| Playwright 1.58.2, the version MosAIc resolves, is pinned in `rigs/e2e` | §5.8 | The same driver as MosAIc's own tests |
 
 ## 7.2 Open questions
 
@@ -98,13 +104,12 @@ release, and each is stated where it applies.
 13. **The `hostile input` size of ENG-20.** The specification gives none. 32 KiB is used. The cost
     of `secret.private_key` is its bound times the number of header starts in the input, so a longer
     input costs more however the bound is chosen.
-14. **Step 2.7, the try in a real MosAIc, was not done.** It needs a development build of MosAIc
-    (an Electron application with a large dependency tree) and opens its window on the
-    maintainer's screen; that was left for the maintainer to decide. What was checked
-    instead, against MosAIc's source at `7af40c8` read from a clone: the entry's fields and the
-    path of `mcp-plugins.json` (`electron/integrations/mcp/plugin.ts`, `examples/mcp/mcp-hello/setup.js`),
-    and the environment merge (`MCPClient.ts:151-166`), which the harness copies. Commit 3's rig
-    (MOS-1) does the real run. Until then, MAN-2 and a first run by hand are the open check.
+14. **Step 2.7, the try in a real MosAIc, is done by the rig, not by hand.** Commit 3's
+    `rigs/e2e` builds MosAIc at `7af40c8`, installs the server with the real installer into a fresh
+    profile, and MOS-1 calls `distill` from the MCP page; MOS-2 to MOS-5 and QRK-1 to QRK-7 run
+    the same way. It opens MosAIc's window on the screen it runs on (use `xvfb-run` where there is
+    none). What the rig cannot show is how a real model behaves (MAN-1) and how packaged MosAIc
+    on macOS and Windows behaves (MAN-2); both stay manual.
 15. **A segment id that is `__payment_required` comes back changed** (§4.5). The server's second
     neutralisation cannot tell an id from other text. An id is chosen by the caller, so the answer
     is to choose another; the alternative is to refuse such an id, which would be a new error code.

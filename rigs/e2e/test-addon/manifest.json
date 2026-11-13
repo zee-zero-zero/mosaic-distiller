@@ -1,0 +1,28 @@
+{
+  "manifestVersion": 1,
+  "id": "distiller-test-addon",
+  "version": "1.0.0",
+  "name": "Distiller Test Add-on",
+  "description": "Test add-on of the end-to-end rig: calls MCP tools on request and writes each result to its data directory.",
+  "author": "Test",
+  "minAppVersion": "0.1.9",
+
+  "ipcNamespace": "distiller-test-addon",
+  "mountPoint": "tab",
+
+  "tab": {
+    "label": "Distiller Test",
+    "icon": "Star",
+    "order": 96
+  },
+
+  "renderer": {
+    "entry": "renderer/index.html"
+  },
+
+  "permissions": ["mcp:read", "mcp:call"],
+
+  "updates": {
+    "checkMode": "manual"
+  }
+}

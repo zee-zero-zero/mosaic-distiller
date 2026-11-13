@@ -7,13 +7,13 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ROOT, read, walk } from "./files";
 
-const ID = /\b(?:ENG|VAL|SRV|INS|MOS|QRK|REP|MAN)-\d+\b/;
+const ID = /\b(?:ENG|VAL|SRV|INS|FM|MOS|QRK|REP|MAN)-\d+\b/;
 
 /** The ids in the first column of the specification's case tables. */
 export function caseIds(spec: string): string[] {
   const ids: string[] = [];
   for (const line of spec.split("\n")) {
-    const m = /^\|\s*((?:ENG|VAL|SRV|INS|MOS|QRK|REP|MAN)-\d+)\s*\|/.exec(line);
+    const m = /^\|\s*((?:ENG|VAL|SRV|INS|FM|MOS|QRK|REP|MAN)-\d+)\s*\|/.exec(line);
     if (m !== null) ids.push(m[1] as string);
   }
   return ids;
@@ -23,7 +23,7 @@ export function caseIds(spec: string): string[] {
 export function testedIds(source: string): Set<string> {
   const out = new Set<string>();
   for (const m of source.matchAll(
-    /(["'`])((?:ENG|VAL|SRV|INS|MOS|QRK|REP|MAN)-\d+)(?=[\s:"'`])/g,
+    /(["'`])((?:ENG|VAL|SRV|INS|FM|MOS|QRK|REP|MAN)-\d+)(?=[\s:"'`])/g,
   )) {
     out.add(m[2] as string);
   }
@@ -44,7 +44,7 @@ const MANUAL = /^(?:MAN-\d+|REP-1)$/;
 describe("REP-5 case coverage", () => {
   const ids = caseIds(read(ROOT + "docs/spec/05-testing.md"));
   const tested = new Set<string>();
-  for (const f of walk(ROOT, (p) => /\.test\.ts$/.test(p))) {
+  for (const f of walk(ROOT, (p) => /\.(?:test|spec)\.ts$/.test(p))) {
     for (const id of testedIds(read(f))) tested.add(id);
   }
   const pending = new Set(pendingIds());

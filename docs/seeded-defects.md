@@ -18,3 +18,5 @@ that could never fail. Written by `scripts/seeded-defects.mjs`; do not edit by h
 | The deadline off (no timer is set for a call) | `packages/server/src/pool.ts` | SRV-8 | SRV-8: 4/4 | yes |
 | The byte-preserving edit replaced by re-serialisation (other entries are written again from their parsed value) | `packages/installer/src/plugins-file.ts` | INS-1 | INS-1: 11/58 | yes |
 | The temporary-file rename replaced by a direct write over the original | `packages/installer/src/plugins-file.ts` | INS-3 | INS-3: 3/4 | yes |
+| The fixture skipping the installer (MosAIc starts with no entry of ours) | `rigs/e2e/fixtures.ts` | MOS-1 | MOS-1: 2/2 | yes |
+| Outbound neutralisation off, as seen from a real MosAIc (a tool result carries its text as it is) | `packages/server/src/app.ts` | MOS-4 | MOS-4: 1/7 | yes |

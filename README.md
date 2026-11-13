@@ -19,10 +19,11 @@ not decide what is relevant. It is not anonymisation, and must never be describe
 
 ## Status
 
-Engine, server and installer implemented (2026-11-13). The engine, its default rule pack, its two
-profiles and its conformance cases; the MCP server with its two tools; and the installer that
-registers the server in MosAIc are in place and tested. Not yet done: the test inside a real MosAIc
-(the end-to-end rig), and the manual checks on macOS and Windows. The specification is in
+Stage 1 implemented; manual tests pending (2026-11-13). The engine with its default rule pack,
+profiles and conformance cases; the MCP server with its two tools; the installer that registers
+the server in MosAIc; and the test rigs, which run the server inside a real MosAIc built at a
+pinned commit, are in place and tested. Not yet done: the two manual checks, a real model calling
+the tool (MAN-1) and the installer on packaged MosAIc for macOS and Windows (MAN-2). The specification is in
 [`docs/spec/`](docs/spec/):
 
 | File | What it covers |
@@ -37,8 +38,6 @@ registers the server in MosAIc are in place and tested. Not yet done: the test i
 
 ## Layout
 
-What exists today is marked; the rest is planned.
-
 ```
 packages/core        the engine: a TypeScript library with no file, network or MosAIc access
 packages/server      the MCP server, over stdio, bundled into one file by `npm run build`
@@ -47,7 +46,9 @@ rulepacks/           the default rule pack (data) and its JSON schema
 profiles/            which action each category gets, per profile (data)
 conformance/         example cases every engine build must pass, and the runner's output
 rigs/mcp-harness     the stdio test harness: starts a server the way MosAIc does and talks to it
-rigs/                (planned) a fake model server, MosAIc end-to-end
+rigs/fake-model      a scripted server that speaks Ollama's API, so a MosAIc chat agent runs for free
+rigs/e2e             MosAIc built at a pinned commit and driven by Playwright: the MOS and QRK cases
+docs/upstream/       drafts of the issues and the pull request for MosAIc's maintainers (not sent)
 config/              data the repository checks read: gitleaks' rules, with their licence notice
 scripts/             the tier runner, the conformance runner, the seeded-defect run, repository checks
 docs/spec/           the specification
@@ -145,7 +146,7 @@ those two variables, if set, still act on the server before it can scrub them.
 ## Toolchain
 
 TypeScript in `strict` mode, Node.js 20 or newer, npm workspaces, vitest, ESLint and Prettier, the
-MCP SDK (pinned to 1.28.0, the version MosAIc resolves) and esbuild. Playwright arrives with the
+MCP SDK (pinned to 1.28.0, the version MosAIc resolves) and esbuild. Playwright (1.58.2, MosAIc's version) drives the
 end-to-end tests. See [`AGENTS.md`](AGENTS.md) for the commands.
 
 ## Licence

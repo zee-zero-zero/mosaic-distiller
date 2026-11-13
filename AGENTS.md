@@ -64,6 +64,8 @@ Node.js 20 or newer (`.nvmrc` says 20). Install once with `npm ci`.
 | `npm run test:quick` | unit tests of every package, a fixed seeded sample of each pool, the conformance sample, and the repository checks REP-2 to REP-5 | 60 s |
 | `npm run test:local` | the quick tier plus the full pools, the conformance runner in full, and the cases that start processes (the stdio server and the installer); it builds the server and the installer first | 15 min |
 | `npm run test:full` | as `test:local`, for CI's `pools-full` job | 60 min |
+| `npm run test:e2e` | builds, then runs the MOS cases: the real installer and a real MosAIc, built once at the pinned commit into `rigs/e2e/.mosaic/` (first run: minutes, and a download); needs a display, or `xvfb-run` | 10 min |
+| `npm run test:quirks` | builds, then runs QRK-1 to QRK-7 against a real MosAIc; QRK-1 waits a minute; needs a display | 15 min |
 | `npm run test:seeded` | the seeded-defect run: each core mechanism disabled in a temporary copy, and the named cases must fail; writes `docs/seeded-defects.md` | 15 min |
 | `npm run conformance` | the conformance runner in full: `conformance/rules.jsonl` and `conformance/golden.jsonl` | — |
 | `npm run build` | compiles the engine, bundles the server into `packages/server/dist/server.mjs` and the installer into `packages/installer/dist/cli.mjs` | — |
@@ -73,5 +75,5 @@ digit boundary, as in `-t "ENG-1(?![0-9])"`, for an id that is a prefix of anoth
 reaches the tests through the environment variable `DISTILLER_TIER` (`quick`, `local` or `full`).
 
 `conformance/golden.jsonl` is written by `npx tsx scripts/golden-regen.ts`. Read every change to it
-against the specification before keeping it. `scripts/case-ids-pending.txt` lists the case ids that
-have no test yet (REP-5) and shrinks as tests are written.
+against the specification before keeping it. REP-5 requires every case id of
+`docs/spec/05-testing.md` to have a test; there is no pending list any more.

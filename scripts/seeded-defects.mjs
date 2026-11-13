@@ -22,7 +22,10 @@ const root = new URL("../", import.meta.url).pathname;
 
 /**
  * `tier` is the test tier the cases run in: `quick` by default, `local` for the cases that start
- * the server (the global set-up then builds the changed source before the cases run).
+ * the server (the global set-up then builds the changed source before the cases run). `tier:
+ * "e2e"` is for the cases that run inside a real MosAIc: they run with Playwright in
+ * `rigs/e2e` (after the server and the installer are built in the copy), need a display, and use
+ * the MosAIc build of the original repository.
  * @type {{mechanism: string, file: string, find: string, replace: string, cases: string[], tier?: string}[]}
  */
 export const rows = [
@@ -116,6 +119,23 @@ export const rows = [
       'const direct = openSync(path, "w", 0o644); writeSync(direct, result.text); closeSync(direct);',
     cases: ["INS-3"],
   },
+  {
+    mechanism: "The fixture skipping the installer (MosAIc starts with no entry of ours)",
+    file: "rigs/e2e/fixtures.ts",
+    find: 'const installerOutput = skipInstaller ? "" : runInstaller(profile);',
+    replace: 'const installerOutput = ""; void skipInstaller;',
+    cases: ["MOS-1"],
+    tier: "e2e",
+  },
+  {
+    mechanism:
+      "Outbound neutralisation off, as seen from a real MosAIc (a tool result carries its text as it is)",
+    file: "packages/server/src/app.ts",
+    find: "text: neutraliseOutbound(text)",
+    replace: "text",
+    cases: ["MOS-4"],
+    tier: "e2e",
+  },
 ];
 
 const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
@@ -126,15 +146,22 @@ function copyRepo() {
     recursive: true,
     filter: (src) => {
       const rel = src.slice(root.length);
-      return !/^(?:\.git|node_modules|coverage|dist|rigs\/e2e\/\.mosaic)(?:\/|$)/.test(rel);
+      return !/^(?:\.git|node_modules|coverage|dist|test-results|rigs\/e2e\/\.mosaic)(?:\/|$)/.test(
+        rel,
+      );
     },
   });
   symlinkSync(join(root, "node_modules"), join(dir, "node_modules"));
+  // The copy of the repository uses the MosAIc build of this one: it is large and never changes.
+  if (existsSync(join(root, "rigs/e2e/.mosaic"))) {
+    symlinkSync(join(root, "rigs/e2e/.mosaic"), join(dir, "rigs/e2e/.mosaic"));
+  }
   return dir;
 }
 
 /** Runs the named cases in `dir`; returns, for each id, the number of tests that ran and failed. */
 function runCases(dir, ids, tier = "quick") {
+  if (tier === "e2e") return runPlaywrightCases(dir, ids);
   const out = join(dir, "vitest-seeded.json");
   const pattern = "^(?:" + ids.map((i) => `${i}(?![0-9])`).join("|") + ")";
   spawnSync(
@@ -176,6 +203,50 @@ function runCases(dir, ids, tier = "quick") {
       ran: mine.length,
       failed: mine.filter((t) => t.status === "failed").length + unloadable.length,
       unloadable: unloadable.length,
+    };
+  }
+  return counts;
+}
+
+/** As `runCases`, for the cases of `rigs/e2e`, run by Playwright after building in `dir`. */
+function runPlaywrightCases(dir, ids) {
+  for (const script of ["scripts/build-server.mjs", "scripts/build-installer.mjs"]) {
+    const b = spawnSync(process.execPath, [join(dir, script)], { cwd: dir, encoding: "utf8" });
+    if (b.status !== 0) throw new Error(`${script} failed:\n${b.stdout}\n${b.stderr}`);
+  }
+  const pattern = ids.map((i) => `${i}(?![0-9])`).join("|");
+  const r = spawnSync(
+    process.execPath,
+    [
+      join(dir, "node_modules/@playwright/test/cli.js"),
+      "test",
+      "--config",
+      "playwright.config.ts",
+      "-g",
+      pattern,
+      "--reporter=json",
+    ],
+    { cwd: join(dir, "rigs/e2e"), env: process.env, encoding: "utf8", maxBuffer: 1 << 28 },
+  );
+  let report;
+  try {
+    report = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`playwright wrote no report:\n${r.stderr}`);
+  }
+  const specs = [];
+  const collect = (suite) => {
+    for (const sp of suite.specs ?? []) specs.push(sp);
+    for (const child of suite.suites ?? []) collect(child);
+  };
+  for (const suite of report.suites) collect(suite);
+  const counts = {};
+  for (const id of ids) {
+    const mine = specs.filter((sp) => sp.title.startsWith(id + " "));
+    counts[id] = {
+      ran: mine.length,
+      failed: mine.filter((sp) => !sp.ok).length,
+      unloadable: 0,
     };
   }
   return counts;

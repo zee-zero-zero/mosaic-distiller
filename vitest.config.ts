@@ -3,7 +3,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["packages/*/test/**/*.test.ts", "scripts/**/*.test.ts"],
+    include: [
+      "packages/*/test/**/*.test.ts",
+      "rigs/fake-model/test/**/*.test.ts",
+      "scripts/**/*.test.ts",
+    ],
     // Builds the server and the installer in the local and full tiers (see the file).
     globalSetup: ["scripts/vitest-global-setup.mjs"],
     // Leave cores free for the main process: several test files run synchronous work for seconds,
