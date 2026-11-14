@@ -3,7 +3,7 @@
 // server and the installer.
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { McpHarness } from "@mosaic-distiller/mcp-harness";
@@ -62,10 +62,7 @@ describe.skipIf(!spawnTier())("INS-5 the entry starts under MosAIc's conditions"
     }
   });
   it("INS-5 a data directory under a path with spaces works", async () => {
-    const box = sandbox();
-    const spaced = join(box.root, "dir with spaces", "data");
-    mkdirSync(spaced, { recursive: true });
-    box.paths.env.XDG_DATA_HOME = spaced;
+    const box = sandbox({ spaced: true });
     const out = install({
       paths: box.paths,
       serverSource: SERVER_DIST,
@@ -76,7 +73,14 @@ describe.skipIf(!spawnTier())("INS-5 the entry starts under MosAIc's conditions"
     expect(e.args[0]).toContain("dir with spaces");
     const h = await McpHarness.start(
       { command: e.command, args: e.args, env: e.env },
-      { parentEnv: { PATH: "/usr/bin:/bin", HOME: box.paths.home, XDG_DATA_HOME: spaced } },
+      {
+        parentEnv: {
+          PATH: "/usr/bin:/bin",
+          HOME: box.paths.home,
+          XDG_DATA_HOME: box.paths.env.XDG_DATA_HOME,
+          LOCALAPPDATA: box.paths.env.LOCALAPPDATA,
+        },
+      },
     );
     try {
       expect((await h.listTools()).length).toBe(2);

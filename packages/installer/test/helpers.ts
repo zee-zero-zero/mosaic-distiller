@@ -33,19 +33,24 @@ export interface Sandbox {
   plugins: string;
 }
 
-export function sandbox(): Sandbox {
+/**
+ * A sandbox. With `spaced`, every directory in it lies under a path that contains spaces; no
+ * platform's data directory can then avoid them, whichever variable or home it is derived from.
+ */
+export function sandbox(opts: { spaced?: boolean } = {}): Sandbox {
   const root = tmp();
-  const home = join(root, "home");
+  const base = opts.spaced === true ? join(root, "dir with spaces") : root;
+  const home = join(base, "home");
   mkdirSync(home, { recursive: true });
   const paths: PathEnv = {
     platform: process.platform,
     home,
     env: {
       HOME: home,
-      XDG_CONFIG_HOME: join(root, "config"),
-      XDG_DATA_HOME: join(root, "data"),
-      APPDATA: join(root, "appdata"),
-      LOCALAPPDATA: join(root, "localappdata"),
+      XDG_CONFIG_HOME: join(base, "config"),
+      XDG_DATA_HOME: join(base, "data"),
+      APPDATA: join(base, "appdata"),
+      LOCALAPPDATA: join(base, "localappdata"),
     },
   };
   return { root, paths, plugins: pluginsFile(paths) };
