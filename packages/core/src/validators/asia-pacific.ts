@@ -90,6 +90,8 @@ export const in_gstin: Validator = (matched) => {
 /**
  * Korea resident registration number: a real date with the century from the seventh digit (1, 2,
  * 5, 6 the 1900s; 3, 4, 7, 8 the 2000s). No checksum: since 2020 new numbers end in random digits.
+ * For a citizen (seventh digit 1 to 4) born before 2020 the region code, digits 8 and 9, is at most
+ * 96. Numbers of foreign residents (5 to 8) and births from 2020 have no region check.
  */
 export const kr_rrn: Validator = (matched) => {
   const d = digitsOf(stripChars(matched, "-"));
@@ -99,9 +101,10 @@ export const kr_rrn: Validator = (matched) => {
   if ("1256".includes(g)) century = 1900;
   else if ("3478".includes(g)) century = 2000;
   else return REJECT;
-  return isRealDate(century + Number(d.slice(0, 2)), Number(d.slice(2, 4)), Number(d.slice(4, 6)))
-    ? ACCEPT
-    : REJECT;
+  const year = century + Number(d.slice(0, 2));
+  if (!isRealDate(year, Number(d.slice(2, 4)), Number(d.slice(4, 6)))) return REJECT;
+  if ("1234".includes(g) && year < 2020 && Number(d.slice(7, 9)) > 96) return REJECT;
+  return ACCEPT;
 };
 
 const NRIC_TABLES: Readonly<Record<string, string>> = Object.freeze({

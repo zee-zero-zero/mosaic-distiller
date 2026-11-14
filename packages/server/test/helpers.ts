@@ -42,7 +42,7 @@ export function sandbox(extra: Record<string, string> = {}): Sandbox {
   return {
     home,
     xdg,
-    dataDir: join(xdg, "mosaic-distiller"),
+    dataDir: join(xdg, "ai-distiller"),
     env: {
       PATH: process.env.PATH ?? "/usr/bin:/bin",
       HOME: home,

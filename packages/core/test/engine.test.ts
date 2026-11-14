@@ -729,7 +729,7 @@ describe("§2.10 the example, byte for byte", () => {
       '"removals":[{"segment":"1","start":9,"end":36,"category":"contact.email","rule":"contact.email","fake":"person1@example.com"}],' +
       '"findings":[],"warnings":[],"provenance":{"rulepack":{"name":"default","version":"0.1.0","hash":"' +
       emailOnly.hash +
-      '"},"profile":"agent","engine":{"name":"mosaic-distiller","version":"0.1.0","unicode":"' +
+      '"},"profile":"agent","engine":{"name":"ai-distiller","version":"0.1.0","unicode":"' +
       process.versions.unicode +
       '"},"certified":false,"counters":{"contact.email":{"evaluated":1,"candidates":1,"rejected_edge":0,"rejected_validator":0,"fired":1}}}}';
     expect(out).toBe(expected);
@@ -833,7 +833,7 @@ describe("the result", () => {
     const r: any = distillText(agent, "x");
     expect(r.provenance.certified).toBe(false);
     expect(r.provenance.engine).toEqual({
-      name: "mosaic-distiller",
+      name: "ai-distiller",
       version: "0.1.0",
       unicode: process.versions.unicode,
     });
@@ -846,7 +846,7 @@ describe("capabilities", () => {
     expect(c.modes).toEqual(["rules"]);
     expect(c.profiles).toEqual({ names: ["agent", "document"], default: "agent" });
     expect(c.rulepack).toEqual({ name: "default", version: "0.1.0", hash: defaultPack().hash });
-    expect(c.engine.name).toBe("mosaic-distiller");
+    expect(c.engine.name).toBe("ai-distiller");
     expect(c.categories["gov_id.us_ssn"]).toBe("high");
     expect(c.categories["network.ipv4"]).toBe("medium");
     expect(c.certified).toBe(false);

@@ -63,7 +63,7 @@ missing.
 | ENG-17 | Invisible characters | adversarial | Each "removed" character → deleted and reported once per run; each "kept" character (a Persian joiner, an emoji joiner, a leading byte-order mark, the flag of Wales) → kept |
 | ENG-18 | The distillate is not normalised | adversarial | Full-width digits and a `ﬁ` ligature outside any value → unchanged in the distillate |
 | ENG-19 | Structural limits | adversarial | No segments → `EMPTY_INPUT`; an empty text → an empty distillate; duplicate ids → `DUPLICATE_SEGMENT_ID`; a lone surrogate → replaced, with `LONE_SURROGATE`; each limit of §2.11 at the limit → passes, and one over → refused with no partial result |
-| ENG-20 | Large and hostile input stays fast | adversarial | 1 MB dense with matches → under 2 seconds; for each pattern, an input of 32 KiB built to make it backtrack (the hit repeated and glued, the hit minus its last character repeated, half of it repeated, its first character repeated) → under 100 ms. In the quick tier the dense input is 64 KiB. The budgets are for an idle machine; the local and full tiers allow three times as much (§7 item 16) |
+| ENG-20 | Large and hostile input stays fast | adversarial | 1 MB dense with matches → under 2 seconds; for each pattern, an input of 32 KiB built to make it backtrack (the hit repeated and glued, the hit minus its last character repeated, half of it repeated, its first character repeated) → under 100 ms. In the quick tier the dense input is 64 KiB. The budgets are for an idle machine; the local and full tiers allow three times as much (see below) |
 | ENG-21 | Output is deterministic | abstract | The pool run twice, with rules, dictionaries and terms shuffled → identical bytes |
 | ENG-22 | Counters | adversarial | No match → `evaluated` equals segments for every rule and `fired` is 0; one e-mail → that rule's `fired` is 1; a rejected edge and a rejected checksum → counted where §2.10 says |
 | ENG-23 | The loader refuses bad packs | adversarial | Each refusal of §2.2 → its own code, and no engine is built: unknown kind, validator, action, flag or edge; a lookbehind, `\d`, `+`, two groups; a duplicate id; an undeclared category; a one-letter term; no rules; a category with no usable fake |
@@ -77,6 +77,16 @@ A rule that can match the empty string hits every fake, so the loader cannot giv
 Same-value numbering off → ENG-8 fails. Allocation checks off → ENG-9, ENG-10 fail. Edge check
 off → ENG-11 fails. Defend rules off → ENG-16 fails. The redactor skipping the last value of a
 segment → ENG-1 fails.
+
+**Time budgets.** The figures of ENG-20 are for an ordinary laptop with nothing else running. The
+local and full tiers run test files in parallel and keep the cores busy, so the same code took 2.1 to
+2.8 seconds for 1 MB and 103 ms for one hostile input there. The tests multiply the budgets by 3 in
+those tiers (`timeScale()` in `packages/core/test/helpers.ts`), or by the value of
+`DISTILLER_TIME_SCALE`; with `DISTILLER_TIME_SCALE=1` they check the figures above. The specification's
+figures carry no margin of their own: the factor is a property of the test environment, not a
+promise of the product. The specification gives no size for the hostile input, so 32 KiB is used.
+The cost of `secret.private_key` is its bound times the number of header starts in the input, so a
+longer input costs more however the bound is chosen.
 
 ## 5.4 Validators
 
@@ -188,7 +198,9 @@ then an onboarding of four screens: welcome, features, agent, ready. The fixture
 way a user does, skipping the agent step, and records which appeared. The chat reads the list of
 connected servers once, when it opens, so the fixture waits for every server of the profile to
 connect before it opens a chat. Every selector is in `rigs/e2e/selectors.ts`. The rig needs a
-display; on a machine with none, run it under `xvfb-run`.
+display; on a machine with none, run it under `xvfb-run`. The fixture options are objects
+(`{entries}`, `{vars}`), because Playwright reads a two-element array given to `test.use` as its own
+`[value, options]` tuple.
 
 | Id | Case | Kind | Input → expected |
 |---|---|---|---|

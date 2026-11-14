@@ -2,7 +2,7 @@
   "name": "@mosaic-distiller/server",
   "private": true,
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "The distiller as an MCP server over stdio: two tools, distill and capabilities.",
   "type": "module",
   "scripts": {

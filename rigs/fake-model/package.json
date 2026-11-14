@@ -2,7 +2,7 @@
   "name": "@mosaic-distiller/fake-model",
   "private": true,
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "Test rig: a scripted HTTP server that speaks the part of Ollama's API that MosAIc's chat uses.",
   "type": "module",
   "exports": {

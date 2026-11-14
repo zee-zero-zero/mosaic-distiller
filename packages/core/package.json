@@ -2,7 +2,7 @@
   "name": "@mosaic-distiller/core",
   "private": true,
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "The distiller engine: text and a rule pack in, a distillate and records of what was replaced out.",
   "type": "module",
   "exports": {

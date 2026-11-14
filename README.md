@@ -1,4 +1,4 @@
-# mosaic-distiller
+# ai-distiller
 
 A distiller for MosAIc Companion: a local MCP server that removes known kinds of sensitive data
 from text before that text is passed on.
@@ -47,9 +47,11 @@ server inside a real MosAIc (2026-11-14).
 - **Two manual checks**: a real model calling the tool (MAN-1), and the installer on packaged
   MosAIc for macOS and Windows (MAN-2).
 - **Phone numbers outside North America**, and names that are not on your list. Both are left out
-  on purpose; the reasons are in [`03-detectors.md`](docs/spec/03-detectors.md) §3.6 and in the open
-  questions of [`07-decisions-and-open-questions.md`](docs/spec/07-decisions-and-open-questions.md).
-- A published package and a licence. The installer works from a clone of this repository.
+  on purpose; the reasons are in [`03-detectors.md`](docs/spec/03-detectors.md) §3.6. Foreign
+  numbers would take their lengths and prefixes from libphonenumber's metadata (Apache-2.0) as data.
+- **A public conformance suite.** None exists for this kind of distiller, so every result says
+  `certified: false` (`05-testing.md` §5.5).
+- A published package. The installer works from a clone of this repository.
 
 ## Summarising is not done
 
@@ -76,7 +78,6 @@ The specification is in [`docs/spec/`](docs/spec/):
 | [`04-mcp-server.md`](docs/spec/04-mcp-server.md) | The MCP tools, their arguments and results, and the server's safeguards |
 | [`05-testing.md`](docs/spec/05-testing.md) | How each part is tested, up to a real MosAIc |
 | [`06-mosaic-integration.md`](docs/spec/06-mosaic-integration.md) | Installing into MosAIc, what MosAIc does that we rely on, and the path upstream |
-| [`07-decisions-and-open-questions.md`](docs/spec/07-decisions-and-open-questions.md) | Decisions this specification makes, and what is still open |
 
 ## Layout
 
@@ -135,8 +136,8 @@ node packages/installer/dist/cli.mjs install
 ```
 
 `install` finds Node.js and records its absolute path, copies the server into a stable directory of
-your own (`~/.local/share/mosaic-distiller/server/` on Linux, `~/Library/Application Support/mosaic-distiller/server/`
-on macOS, `%LOCALAPPDATA%\mosaic-distiller\server\` on Windows), and adds one entry named
+your own (`~/.local/share/ai-distiller/server/` on Linux, `~/Library/Application Support/ai-distiller/server/`
+on macOS, `%LOCALAPPDATA%\ai-distiller\server\` on Windows), and adds one entry named
 `distiller` to MosAIc's `mcp-plugins.json`. Every other entry in that file is kept byte for byte, a
 backup `mcp-plugins.json.bak` is written first, and a file it cannot read as a JSON array is left
 untouched. Running it again gives the same result. It prints `Added the "distiller" entry`, or
@@ -301,5 +302,5 @@ end-to-end tests. See [`AGENTS.md`](AGENTS.md) for the commands.
 
 ## Licence
 
-Open source. The licence is chosen before the first release
-([`07-decisions-and-open-questions.md`](docs/spec/07-decisions-and-open-questions.md)).
+Apache-2.0, the same licence as MosAIc. See [`LICENSE`](LICENSE). The copyright holder line is
+added before the first release.

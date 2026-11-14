@@ -2,7 +2,7 @@
   "name": "mosaic-distiller-workspace",
   "private": true,
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "Workspace root of the distiller: a local MCP server and the engine inside it.",
   "type": "module",
   "workspaces": [

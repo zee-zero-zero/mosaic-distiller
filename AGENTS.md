@@ -11,8 +11,9 @@ first, then the specification in [`docs/spec/`](docs/spec/).
 - Code follows `docs/spec/`. When code and specification disagree, the specification wins until
   it is changed.
 - A change of behaviour changes the specification, the tests and the code in the same commit.
-- Where the specification is silent or ambiguous, do not guess. Record the question in
-  `docs/spec/07-decisions-and-open-questions.md` and ask.
+- Where the specification is silent or ambiguous, do not guess. Ask, and when the
+  answer comes, write it into the section of the specification it belongs to. The specification
+  holds decisions where they apply; there is no separate list of open questions.
 
 ## Rules that are easy to break
 

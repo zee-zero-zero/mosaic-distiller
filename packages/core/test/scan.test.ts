@@ -79,6 +79,16 @@ describe("ENG-11 edges: through the default pack", () => {
 });
 
 describe("ENG-12 the scan restarts one code point after a rejection", () => {
+  it("a card followed by a space and more digits, and two cards one space apart, are found", () => {
+    const e = defaultEngine();
+    const code = distillText(e, "card 4111 1111 1111 1111 123");
+    expect(code.removals.map((x: any) => [x.start, x.end])).toEqual([[5, 24]]);
+    const two = distillText(e, "4111 1111 1111 1111 5555 5555 5555 4444");
+    expect(two.removals.map((x: any) => [x.start, x.end])).toEqual([
+      [0, 19],
+      [20, 39],
+    ]);
+  });
   it("a rejected match followed one character later by a valid one: the valid one is found", () => {
     const e = smallEngine([{ id: "pair", pattern: "[-ab]{2}", edges: "word" }]);
     const r = distillText(e, "-ab");

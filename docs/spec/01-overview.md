@@ -89,10 +89,12 @@ states the bar exactly.
 
 The workspace packages are named `@mosaic-distiller/core`, `@mosaic-distiller/server` and
 `@mosaic-distiller/installer`. `packages/core` may import `node:crypto`, for SHA-256, and nothing
-else from Node: it reads no file, opens no socket and starts no process. Until the licence and the
-package name are chosen (§7.2, questions 1 and 2) every `package.json` is `"private": true` with the
-licence `UNLICENSED`, nothing is published, and the working name is the one constant `PACKAGE_NAME`
-in `packages/core/src/name.ts`.
+else from Node: it reads no file, opens no socket and starts no process. The licence is Apache-2.0, the
+licence of MosAIc itself, and every `package.json` says so. The package name is `ai-distiller`, held
+in the one constant `PACKAGE_NAME` in `packages/core/src/name.ts`. The scoped names above stay until
+the GitHub organisation exists. Every `package.json` is still `"private": true`, because nothing is
+published yet. The distiller needs Node.js 20 or newer on the user's machine, because it runs as a
+plugin inside MosAIc's own setup.
 
 ## 1.5 Principles
 

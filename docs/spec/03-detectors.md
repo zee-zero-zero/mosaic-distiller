@@ -33,12 +33,14 @@ measured rate and what it would need.
 **Kept with a weak check or none.** Eight shapes are kept only because their layout is the
 issuer's own: hyphenated US SSNs, North American phone numbers, Medicare beneficiary numbers,
 payment cards, Korean resident numbers, Indian PAN, UK National Insurance numbers and UK driving
-licences. Each can be moved to §3.6 by one decision (§7).
+licences. Each can be moved to §3.6 by one decision. The maintainers decided on 2026-11-14 to keep all eight:
+a missed identifier leaks, and a wrongly replaced harmless value costs only a fake.
 
 **Two secret rules break the bar on purpose.** `secret.keyed_value` and `secret.query_param`
 recognise a secret by the name written before it, such as `password=`. That is reading a word
 next to the value, which the bar forbids for personal data. They are kept because a leaked secret
-does the most harm, and because these two rules are long-established scrubber practice (§7).
+does the most harm, and because these two rules are long-established scrubber practice. The maintainers decided on 2026-11-14 to keep both, for the
+same reason as above.
 
 ## 3.2 Categories
 
@@ -262,9 +264,10 @@ share a category, each id adds a suffix: `org_id.eu_vat.at`, `secret.vendor_key.
   I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<
   D231458907UTO7408122F1204159<<<<<<<6
   ```
-  Not: the TD3 specimen with its last digit changed to 1. The whole zone is masked, names included. The
-  TD1 composite check is not applied until it is confirmed against Doc 9303: two published sample cards
-  disagree on it. Visa zones (`V…`) are left out.
+  Not: the TD3 specimen with its last digit changed to 1. The whole zone is masked, names included.
+  The TD1 composite digit is checked: it is the 30th character of line 2 and covers line 1 positions
+  6 to 30, then line 2 positions 1 to 7, 9 to 15 and 19 to 29 (not the sex or nationality). Visa zones
+  (`V…`) are left out.
   The pack carries this as three rules, `gov_id.mrz.td3`, `gov_id.mrz.td2` and `gov_id.mrz.td1`,
   one per layout, all in the category `gov_id.mrz`. Every validator of a rule must accept a match
   (§2.4.5), and each validator checks one layout. The second specimen above has two lines of 36
@@ -273,10 +276,16 @@ share a category, each id adds a suffix: `org_id.eu_vat.at`, `secret.vendor_key.
 
 ### 3.3.6 Financial
 
-- **`financial.payment_card`**: `[0-9](?:[ -]?[0-9]){12,18}`, edges `numeric`. Validators
+- **`financial.payment_card`**: `[0-9]{4}(?:[ -][0-9]{4}){3}|[0-9]{4}[ -][0-9]{6}[ -][0-9]{5}|[0-9]{4}[ -][0-9]{6}[ -][0-9]{4}|[0-9]{13,19}`, edges `numeric`. Validators
   `separators_consistent`, `luhn`, `card_iin`.
   - Hit: `4111 1111 1111 1111`, `3782 822463 10005`, `5555555555554444`.
   - Not: `4111 1111 1111 1112`, `1234 5678 9012 3456`.
+  - The pattern lists the grouped layouts by their exact length (4-4-4-4, 4-6-5 and 4-6-4), and
+    then an ungrouped run of 13 to 19 digits. A grouped number therefore ends where its layout ends,
+    so `4111 1111 1111 1111 123` (a card and its code) and two cards one space apart are found. A
+    pattern that took a run of up to 19 digits with single separators would reject the whole run
+    at its first failed check and never try a shorter match from the same start (§2.4.4). Grouping
+    other than these three is found only without separators.
   - Residual risk: 1 in 10 long digit runs inside a network's range pass Luhn. This is the industry's
     standard detector, kept on that ground. The networks' published test numbers are hits, since a
     rule cannot tell a test number from a real one.
@@ -434,7 +443,7 @@ formed, never that it was issued.
 | `card_iin` | prefix and length: Visa 4 (13, 16, 19); Mastercard 51–55 and 2221–2720 (16); American Express 34, 37 (15); Discover 6011, 644–649, 65, 622126–622925 (16–19); JCB 3528–3589 (16–19); Diners Club 300–305, 36, 38–39 (14–19) | ISO/IEC 7812 |
 | `base58check` | Base58 decode to 25 bytes; the last 4 equal the first 4 of SHA-256(SHA-256(the first 21)); the version byte is one of 0x00 and 0x05 (Bitcoin; 0x05 is also Litecoin's legacy P2SH), 0x30 and 0x32 (Litecoin), 0x1E and 0x16 (Dogecoin) | Bitcoin, Litecoin and Dogecoin `chainparams.cpp` |
 | `bech32` | human-readable part `bc` or `ltc`; the BIP 173 checksum (constant 1) for witness version 0, the BIP 350 checksum (0x2bc830a3) for versions 1–16 | BIP 173, BIP 350 |
-| `mrz_td3`, `mrz_td2`, `mrz_td1` | each field's check digit: weights 7, 3, 1 repeated, `<` = 0, A = 10 … Z = 35, sum mod 10. Document number, birth date and expiry date in every layout; personal number and composite in TD3 and TD2. The TD1 composite is not applied yet (§3.3.5) | ICAO Doc 9303, as reproduced on Wikipedia and in the `mrz` library (the ICAO site refused automated reading) |
+| `mrz_td3`, `mrz_td2`, `mrz_td1` | each field's check digit: weights 7, 3, 1 repeated, `<` = 0, A = 10 … Z = 35, sum mod 10. Document number, birth date and expiry date in every layout; personal number and composite in every layout. The TD1 composite covers line 1 positions 6 to 30, then line 2 positions 1 to 7, 9 to 15 and 19 to 29, and sits at line 2 position 30 | ICAO Doc 9303, as reproduced on Wikipedia, in the `mrz` library and in PassportEye (the ICAO site refused automated reading) |
 | `vin_na` | transliterate (A–H → 1–8, J–N → 1–5, P → 7, R → 9, S–Z → 2–9); weights 8 7 6 5 4 3 2 10 0 9 8 7 6 5 4 3 2; sum mod 11 (10 is `X`) equals position 9; position 10 not U, Z or 0; at least one letter and one digit | 49 CFR 565 |
 
 **North America**
@@ -451,7 +460,7 @@ formed, never that it was issued.
 | Validator | Rule | Source |
 |---|---|---|
 | `be_nn` | raw month 00–12; date real when month and day are not 0; check = 97 − (first 9 digits mod 97), or the same with a `2` prefixed (born from 2000) | python-stdnum `be.nn` |
-| `cz_rc` | month = MM mod 50 mod 20 (women +50, overflow +20); year 1954–2053 from YY; date real; first 9 digits mod 11 mod 10 = last digit | python-stdnum `cz.rc` |
+| `cz_rc` | month = MM mod 50 mod 20 (women +50, overflow +20); year 1954–2053 from YY; date real; first 9 digits mod 11 = last digit; for a birth year before 1985 the remainder is also taken mod 10, so a remainder of 10 stands for 0 | python-stdnum `cz.rc` |
 | `es_dni`, `es_nie` | letter = `TRWAGMYFPDXBNJZSQVHLCKE`[number mod 23], with X, Y, Z read as 0, 1, 2 for the NIE | python-stdnum `es.dni`, `es.nie` |
 | `fi_hetu` | DDMMYY a real date with the century from the sign (`+` 1800; `-`, Y, X, W, V, U 1900; A–F 2000); individual number at least 002 (900–999 `variant: temporary`); check = `0123456789ABCDEFHJKLMNPRSTUVWXY`[DDMMYYNNN mod 31] | python-stdnum `fi.hetu` |
 | `fr_nir` | `2A` read as 19, `2B` as 18; key = 97 − (first 13 digits mod 97) | python-stdnum `fr.nir` |
@@ -461,7 +470,7 @@ formed, never that it was issued.
 | `it_cf` | the date decodes (omocodia letters L–V for digits, month letter `ABCDEHLMPRST`, day + 40 for women); check letter from the odd and even tables over the first 15 characters, mod 26 | python-stdnum `it.codicefiscale` |
 | `no_fnr` | two mod-11 check digits (weights 3, 7, 6, 1, 8, 9, 4, 5, 2 and 5, 4, 3, 2, 7, 6, 5, 4, 3, 2); a real date, with D-numbers (day + 40) and H-numbers (month + 40); day 80 or more rejected | python-stdnum `no.fodselsnummer` |
 | `se_pnr` | a real date (day + 60 for coordination numbers accepted), any century; Luhn over the last ten digits | python-stdnum `se.personnummer` |
-| `eu_vat` | AT: (6 − Luhn checksum of the 7 digits after `U`) mod 10 = the 8th. BE: first 8 digits + last 2 ≡ 0 mod 97, first digit 0 or 1. DE: ISO 7064 MOD 11,10. ES: the DNI, NIE or CIF rules of python-stdnum `es.nif`. FR: numeric key = (SIREN followed by `12`) mod 97, and the SIREN passes Luhn; letter keys by `fr.tva`. IT: Luhn over 11 digits. NL: the BSN eleven-test on the 9 digits, or ISO 7064 MOD 97-10 over `NL` and the number (the format since 2020). PL: weights 6, 5, 7, 2, 3, 4, 5, 6, 7 and −1, sum ≡ 0 mod 11. SE: Luhn over the first ten digits | python-stdnum `at.uid`, `be.vat`, `de.vat`, `es.nif`, `fr.tva`, `it.iva`, `nl.btw`, `pl.nip`, `se.vat` |
+| `eu_vat` | AT: (6 − Luhn checksum of the 7 digits after `U`) mod 10 = the 8th. BE: first 8 digits + last 2 ≡ 0 mod 97, first digit 0 or 1. DE: ISO 7064 MOD 11,10. ES: the DNI, NIE or CIF rules of python-stdnum `es.nif`. FR: numeric key = (SIREN followed by `12`) mod 97, and the SIREN passes Luhn; letter keys by `fr.tva`. IT: Luhn over 11 digits. NL: the suffix is not `B00`, and either the BSN eleven-test on the 9 digits holds or ISO 7064 MOD 97-10 over `NL` and the number does (the format since 2020). PL: weights 6, 5, 7, 2, 3, 4, 5, 6, 7 and −1, sum ≡ 0 mod 11. SE: Luhn over the first ten digits | python-stdnum `at.uid`, `be.vat`, `de.vat`, `es.nif`, `fr.tva`, `it.iva`, `nl.btw`, `pl.nip`, `se.vat` |
 
 **Asia-Pacific**
 
@@ -472,7 +481,7 @@ formed, never that it was issued.
 | `hkid` | values A = 10 … Z = 35, a single letter preceded by a space worth 36; weights 9 … 2; check = (11 − sum mod 11) mod 11, 10 written `A` | stdnum-js `hk.hkid` |
 | `in_pan` | serial (characters 6–9) not `0000` | python-stdnum `in_.pan` |
 | `in_gstin` | state code 01–37; characters 3–12 a PAN; Luhn mod 36 over all 15 characters | python-stdnum `in_.gstin` |
-| `kr_rrn` | the date real, century from the seventh digit (1, 2, 5, 6: 1900s; 3, 4, 7, 8: 2000s); no checksum | python-stdnum `kr.rrn`, the 2020 change as reported |
+| `kr_rrn` | the date real, century from the seventh digit (1, 2, 5, 6: 1900s; 3, 4, 7, 8: 2000s); no checksum; for a seventh digit 1 to 4 and a birth year before 2020, the region code (digits 8 and 9) is at most 96 | python-stdnum `kr.rrn`, the 2020 change as reported |
 | `sg_nric` | digits weighted 2, 7, 6, 5, 4, 3, 2, plus 4 for T and G, 3 for M; letter from `JZIHGFEDCBA` (S, T), `XWUTRQPNMLK` (F, G) or `XWUTRQPNJLK` (M) at sum mod 11 | open-source validators (unpublished officially) |
 
 **Latin America and Africa**
@@ -515,8 +524,11 @@ A checksum proves only that a value is well formed, never that it was issued.
   layout or encoding (§3.3.5, §3.3.6). `base58check` refuses a match of more than 64 characters,
   which no address reaches, because decoding is quadratic in the length. `mrz_td2` applies only the
   composite check; TD2 has no personal-number digit.
-- `cz_rc` follows the rule as written (`mod 11 mod 10`). `python-stdnum` reads a remainder of 10
-  as an invalid number from the year 1985; we read it as a check digit of 0 (§7.2, question 11).
+- `cz_rc` reads a remainder of 10 as check digit 0 only for birth years before 1985, as
+  `python-stdnum` does. `eu_vat` for the Netherlands refuses the suffix `B00`, and `kr_rrn` refuses
+  a region code above 96 for citizens born before 2020, also as `python-stdnum` does. None of the
+  validators reads the clock, so a birth date in the future is not refused, which `python-stdnum`
+  does.
 - `ie_pps`: the second letter's index is its place in `WABCDEFGHIJKLMNOPQRSTUV` (A is 1, B is 2, H
   is 8).
 

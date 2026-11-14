@@ -727,7 +727,7 @@
       "id": "financial.payment_card",
       "category": "financial.payment_card",
       "kind": "pattern",
-      "pattern": "[0-9](?:[ -]?[0-9]){12,18}",
+      "pattern": "[0-9]{4}(?:[ -][0-9]{4}){3}|[0-9]{4}[ -][0-9]{6}[ -][0-9]{5}|[0-9]{4}[ -][0-9]{6}[ -][0-9]{4}|[0-9]{13,19}",
       "flags": "",
       "edges": "numeric",
       "validators": [

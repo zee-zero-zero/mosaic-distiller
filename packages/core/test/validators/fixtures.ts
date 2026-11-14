@@ -229,7 +229,11 @@ export const RULES: RuleExamples[] = [
     rule: "gov_id.mrz.td1",
     validators: ["mrz_td1"],
     hit: [TD1_HIT],
-    not: [TD1_HIT.replace("D231458907", "D231458908")],
+    not: [
+      TD1_HIT.replace("D231458907", "D231458908"),
+      // Only the composite digit is wrong.
+      TD1_HIT.replace("UTO<<<<<<<<<<<6", "UTO<<<<<<<<<<<7"),
+    ],
   },
   {
     rule: "financial.payment_card",

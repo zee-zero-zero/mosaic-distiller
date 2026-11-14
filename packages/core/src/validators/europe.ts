@@ -38,7 +38,9 @@ export const be_nn: Validator = (matched) => {
 
 /**
  * Czech and Slovak birth number with ten digits: month MM mod 50 mod 20, year 1954 to 2053 from
- * YY, a real date, and the first nine digits mod 11 mod 10 equal to the last digit.
+ * YY, a real date, and the check digit: the first nine digits mod 11, then mod 10 for a birth year
+ * before 1985 (a remainder of 10 stands for 0), and without the mod 10 from 1985 (a remainder of 10
+ * is then never valid).
  */
 export const cz_rc: Validator = (matched) => {
   const d = digitsOf(matched);
@@ -48,7 +50,8 @@ export const cz_rc: Validator = (matched) => {
   const dd = Number(d.slice(4, 6));
   const year = yy >= 54 ? 1900 + yy : 2000 + yy;
   if (!isRealDate(year, mon, dd)) return REJECT;
-  return modDigits(d.slice(0, 9), 11) % 10 === Number(d[9]) ? ACCEPT : REJECT;
+  const rem = modDigits(d.slice(0, 9), 11);
+  return (year < 1985 ? rem % 10 : rem) === Number(d[9]) ? ACCEPT : REJECT;
 };
 
 const DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
@@ -333,6 +336,7 @@ function mod97Letters(s: string): number {
 
 function vatNl(rest: string): ValidatorResult {
   if (!/^[0-9]{9}B[0-9]{2}$/.test(rest)) return REJECT;
+  if (rest.endsWith("B00")) return REJECT;
   const bsn = rest.slice(0, 9);
   let sum = 0;
   for (let i = 0; i < 8; i++) sum += (9 - i) * Number(bsn[i]);

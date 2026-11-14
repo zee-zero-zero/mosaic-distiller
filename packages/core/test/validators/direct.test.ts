@@ -237,6 +237,31 @@ describe("VAL-1 adversarial cases per validator", () => {
     const td3Bad = td3.replace("L898902C3", "L898902C4");
     expect(v("mrz_td3", td3Bad).ok).toBe(false);
   });
+  it("VAL-1 mrz_td1: the composite digit", () => {
+    const td1 = RULES.find((r) => r.rule === "gov_id.mrz.td1")!.hit[0] as string;
+    expect(v("mrz_td1", td1).ok).toBe(true);
+    // Only the composite digit, the last character of line 2, is changed.
+    expect(v("mrz_td1", td1.replace("UTO<<<<<<<<<<<6", "UTO<<<<<<<<<<<5")).ok).toBe(false);
+    // A character in optional data 2, which the composite covers, is changed.
+    expect(v("mrz_td1", td1.replace("UTO<<<<<<<<<<<6", "UTO<<<<B<<<<<<6")).ok).toBe(false);
+    // The sex and nationality fields are not covered by the composite.
+    expect(v("mrz_td1", td1.replace("F1204159UTO", "M1204159GBR")).ok).toBe(true);
+  });
+  it("VAL-1 cz_rc: a remainder of 10 is check digit 0 only before 1985", () => {
+    expect(v("cz_rc", "840101/0080").ok).toBe(true);
+    expect(v("cz_rc", "850101/0090").ok).toBe(false);
+    expect(v("cz_rc", "850101/0099").ok).toBe(false);
+  });
+  it("VAL-1 eu_vat NL: the suffix B00 is refused", () => {
+    expect(v("eu_vat", "NL111222308B01").ok).toBe(true);
+    expect(v("eu_vat", "NL111222308B00").ok).toBe(false);
+  });
+  it("VAL-1 kr_rrn: region code above 96 for citizens born before 2020 only", () => {
+    expect(v("kr_rrn", "900101-1960000").ok).toBe(true);
+    expect(v("kr_rrn", "900101-1970000").ok).toBe(false);
+    expect(v("kr_rrn", "900101-5970000").ok).toBe(true);
+    expect(v("kr_rrn", "210101-3970000").ok).toBe(true);
+  });
   it("VAL-1 vin_na: position 10, letters and digits, wrong length", () => {
     expect(v("vin_na", "1M8GDM9AXKP04278").ok).toBe(false);
     expect(v("vin_na", "1M8GDM9AXKP0427888").ok).toBe(false);

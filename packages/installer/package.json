@@ -2,11 +2,11 @@
   "name": "@mosaic-distiller/installer",
   "private": true,
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "Installs the distiller server into MosAIc Companion, checks the installation, and removes it.",
   "type": "module",
   "bin": {
-    "mosaic-distiller": "./dist/cli.mjs"
+    "ai-distiller": "./dist/cli.mjs"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

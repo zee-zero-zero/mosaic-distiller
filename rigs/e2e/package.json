@@ -2,7 +2,7 @@
   "name": "@mosaic-distiller/e2e",
   "private": true,
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "Test rig: runs the distiller inside a real MosAIc Companion, built at a pinned commit, driven by Playwright.",
   "type": "module",
   "scripts": {

@@ -10,7 +10,7 @@ import { install, type Outcome } from "./install";
 import { realPathEnv } from "./paths";
 import { uninstall } from "./uninstall";
 
-const USAGE = `Usage: mosaic-distiller <command>
+const USAGE = `Usage: ai-distiller <command>
 
   install            copy the server and register it in MosAIc
   doctor             check the installation

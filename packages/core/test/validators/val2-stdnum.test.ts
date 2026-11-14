@@ -122,13 +122,7 @@ const SPECS: Spec[] = [
       return { make: (c) => body + c, checks: range(10, 1) };
     },
     alphabet: () => D,
-    // §3.5 says "mod 11 mod 10" for every year; stdnum uses "mod 11" alone for years from 1985, so
-    // a remainder of 10 is a valid check digit 0 for us and invalid for stdnum.
-    ignore: (c) => {
-      const yy = Number(c.slice(0, 2));
-      return c.length === 10 && Number(c.slice(0, 9)) % 11 === 10 && !(yy >= 54 && yy <= 84);
-    },
-    note: "ignores the remainder-10 case for years from 1985 (spec: mod 11 mod 10; stdnum: mod 11)",
+    note: "same domain",
   },
   {
     name: "es_dni",
@@ -399,9 +393,7 @@ const SPECS: Spec[] = [
       return { make: (c) => body + c + "B01", checks: range(10, 1) };
     },
     alphabet: (c, i) => (i === 9 ? "B" : D),
-    // stdnum refuses the suffix B00; §3.5 names only the eleven-test, so B00 is accepted by us.
-    ignore: (c) => c.endsWith("B00"),
-    note: "ignores the suffix B00 (stdnum refuses it; see report)",
+    note: "same domain",
   },
   {
     name: "eu_vat NL (MOD 97-10)",
@@ -413,8 +405,7 @@ const SPECS: Spec[] = [
       return { make: (c) => body + c, checks: range(100, 2) };
     },
     alphabet: (c, i) => (i === 9 ? "B" : D),
-    ignore: (c) => c.endsWith("B00"),
-    note: "ignores the suffix B00 (stdnum refuses it; see report)",
+    note: "same domain",
   },
   {
     name: "eu_vat PL",
@@ -552,10 +543,7 @@ const SPECS: Spec[] = [
     },
     alphabet: (c, i) => (i === 6 ? "12345678" : D),
     // stdnum refuses a birth date in the future (a clock read); 2000s years from 2020 are left out.
-    // It also refuses a region code (digits 8 and 9) above 96, which §3.5 does not check.
-    ignore: (c) =>
-      ("3478".includes(c[6] as string) && Number(c.slice(0, 2)) >= 20) ||
-      Number(c.slice(7, 9)) > 96,
+    ignore: (c) => "3478".includes(c[6] as string) && Number(c.slice(0, 2)) >= 20,
     note: "oracle: stdnum accepts for some check digit (no checksum in §3.5)",
   },
   {

@@ -28,10 +28,9 @@ specification wins, and the disagreement is reported.
 - **The specification moves with the code.** Where this list makes a decision the specification
   does not yet record, the step says so. That step also updates the named section of
   `docs/spec/`, in the same commit. Each such decision is cheap to reverse before the first
-  release. Record each one in `07-decisions-and-open-questions.md` §7.1.
+  release. Write each one into the section it names.
 - **Stop and ask** when something here cannot be done as written, or when a test shows the
-  specification is wrong. Collect such questions in `07-decisions-and-open-questions.md` §7.2 and
-  report them together.
+  specification is wrong. Collect such questions and report them together.
 
 ## Decisions made in this list
 
@@ -40,15 +39,15 @@ first needs it.
 
 | Decision | Value | Spec section to update | Commit |
 |---|---|---|---|
-| Package name (working) | `mosaic-distiller`, held in one constant, `PACKAGE_NAME`, in `packages/core/src/name.ts`. Every `<package name>` in the specification means this value until the name is final (§7.2, question 2). | §7.2 question 2 | 1 |
-| Publishing | Nothing is published in this phase. Every `package.json` has `"private": true` and `"license": "UNLICENSED"` until the licence is chosen (§7.2, question 1). No `LICENSE` file yet. | §7.2 question 1 | 1 |
+| Package name | `ai-distiller`, held in one constant, `PACKAGE_NAME`, in `packages/core/src/name.ts`. Every `<package name>` in the specification means this value. | §1.4 | 1 |
+| Publishing | Nothing is published in this phase. Every `package.json` has `"private": true` and `"license": "Apache-2.0"`, and the repository has a `LICENSE` file. | §1.4 | 1 |
 | Workspace package names | `@mosaic-distiller/core`, `@mosaic-distiller/server`, `@mosaic-distiller/installer` | §1.4 | 1 |
 | Profile file format | `profiles/agent.json` and `profiles/document.json`, each `{"format": "profile/1", "name": "...", "actions": {"<category>" or "<category>/<variant>": "<action>"}}`. A category that a profile does not name keeps its rule's default action. | §2.7 | 1 |
 | Loader refusal codes | `PACK_FORMAT`, `PACK_SCHEMA`, `PACK_UNKNOWN_KIND`, `PACK_UNKNOWN_VALIDATOR`, `PACK_UNKNOWN_ACTION`, `PACK_UNKNOWN_FLAG`, `PACK_UNKNOWN_EDGE`, `PACK_PATTERN_SUBSET`, `PACK_PATTERN_COMPILE`, `PACK_DUPLICATE_ID`, `PACK_UNDECLARED_CATEGORY`, `PACK_TERM_TOO_SHORT`, `PACK_NO_RULES`, `PACK_NO_FAKE`. The same codes apply to profiles, with `PROFILE_` in place of `PACK_`. | §2.2 | 1 |
 | Determinism check | REP-4: a test fails if `packages/core/src` uses `Date`, `Math.random`, `toLocaleLowerCase`, `toLocaleUpperCase`, `localeCompare`, `Intl`, `\d`, `\w`, `\s` or `\b`. The one exception is `src/pattern/subset.ts`, which must name those escapes in order to refuse them. Sorting compares code points. | §5.9 | 1 |
 | Case coverage check | REP-5: a test reads every case id in `docs/spec/05-testing.md` and fails if any id has no test whose name starts with it. The exception is ids listed in `scripts/case-ids-pending.txt`. That file shrank with each commit and was deleted in commit 3. | §5.9 | 1 |
 | Deadline mechanism | The engine runs in a `worker_threads` worker. When a call passes 20 seconds, the server terminates that worker, answers `DEADLINE` and starts a new one. A synchronous engine cannot be interrupted in the same thread. | §4.5 | 2 |
-| Outbound neutralisation strings | In every text the server returns, `<use_tool` becomes `[neutralised: use_tool]`, `<mosaic_ui` becomes `[neutralised: mosaic_ui]`, and `__payment_required` becomes `[neutralised: payment_required]`, in any case of letters; quotes round the payment key stay, so that JSON stays valid and no longer holds `"__payment_required"` (as built; §7.1). None of these contains `"` or `\`. MosAIc opens a payment screen when a tool result's first text block contains `"__payment_required"` (with the quotes) and parses as JSON with that key set. | §4.5 | 2 |
+| Outbound neutralisation strings | In every text the server returns, `<use_tool` becomes `[neutralised: use_tool]`, `<mosaic_ui` becomes `[neutralised: mosaic_ui]`, and `__payment_required` becomes `[neutralised: payment_required]`, in any case of letters; quotes round the payment key stay, so that JSON stays valid and no longer holds `"__payment_required"` (as built). None of these contains `"` or `\`. MosAIc opens a payment screen when a tool result's first text block contains `"__payment_required"` (with the quotes) and parses as JSON with that key set. | §4.5 | 2 |
 | Start-up failure on stderr | One line: `DISTILLER_START_FAILED <code>`, where `<code>` is a loader code. Nothing else. | §4.1 | 2 |
 | Test-only server entry | `packages/server/src/test-entry.ts`, built to `dist/test-entry.mjs`. It adds the hooks that SRV-2 and SRV-8 need. The installer never copies it. | §5.6 | 2 |
 | MosAIc's settings directory on Linux | `$XDG_CONFIG_HOME/mosaic-companion/` when `XDG_CONFIG_HOME` is set, otherwise `~/.config/mosaic-companion/`. On Windows, `%APPDATA%\mosaic-companion\`. This is where Electron puts MosAIc's user data, and MosAIc's own example (`examples/mcp/mcp-hello/setup.js`) resolves it the same way. | §6.1 | 2 |
@@ -276,14 +275,12 @@ PACKAGE_NAME, ENGINE_VERSION, LIMITS
 
     Synthetic secrets are generated, never live keys, and are built so that no scanner takes
     them for a real key: a repeating filler after the prefix.
-  - **Check the additional secret shapes of §3.4 against gitleaks' default rules** (§7.2,
-    question 5):
+  - **Check the additional secret shapes of §3.4 against gitleaks' default rules** (answered):
     - Fetch `config/gitleaks.toml` from the latest gitleaks release (MIT licence). Keep its
       licence notice, and record the release tag at the top of the file.
     - For each of our six additional shapes, compare our pattern with gitleaks' rule for the
       same prefix.
     - Write the comparison into §3.4: each shape kept, changed or dropped, with the reason.
-    - Update §7.2 question 5.
     - A test asserts that each of our additional shapes hits the sample value gitleaks' rule
       carries, where it carries one.
   - *Tests:*
@@ -373,7 +370,7 @@ All of steps 1.1 to 1.14 are done and every gate command passes:
 | `npm run conformance` | 318 cases (271 rule, 47 golden), 0 failed |
 | REP-5 | every ENG and VAL case has a test; pending file holds only SRV, INS, MOS, QRK |
 
-Where the work differs from this list (each is recorded in `docs/spec/07-decisions-and-open-questions.md`):
+Where the work differs from this list (each is written into the section of `docs/spec/` it concerns):
 
 - **`?` is allowed** in the pattern subset, as the bound `{0,1}`. The spec forbids only `*` and `+`,
   and the pack uses `?` throughout; step 1.3 said to refuse it, and the spec won.
@@ -398,10 +395,10 @@ Where the work differs from this list (each is recorded in `docs/spec/07-decisio
 - **Extra repository checks:** `scripts/repo-checks/source-headers.test.ts` (AGENTS rule 3) and
   `scripts/golden-regen.ts` (writes `conformance/golden.jsonl`; read every change).
 
-Open questions raised for the maintainer (§7.2, questions 11 to 13): where §3.5 and `stdnum`
-disagree (`cz_rc`, NL VAT `B00`, `kr_rrn`); a card followed by a space and more digits is not found
-(§2.4.4); the size of ENG-20's hostile input. Question 5 (gitleaks) is answered: three shapes kept,
-three changed, none dropped.
+Questions raised for the maintainer, all answered since: where §3.5 and `stdnum` disagree (`cz_rc`,
+NL VAT `B00`, `kr_rrn`; now followed, §3.5); a card followed by a space and more digits was not found
+(now found, §3.3.6); the size of ENG-20's hostile input (32 KiB, §5.3). The gitleaks comparison is
+answered: three shapes kept, three changed, none dropped.
 
 ### Gate for commit 1
 
@@ -551,7 +548,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
     - the byte-preserving edit replaced by re-serialisation (INS-1 fails);
     - the temporary-file rename replaced by a direct write (INS-3 fails).
   - Shrink `scripts/case-ids-pending.txt` to the MOS and QRK ids.
-- [x] **2.7 Try it in a real MosAIc** (done by commit 3's rig, MOS-1, not by hand; §7.2 question 14) (Linux, a development build of MosAIc at
+- [x] **2.7 Try it in a real MosAIc** (done by commit 3's rig, MOS-1, not by hand) (Linux, a development build of MosAIc at
   `7af40c8`, a throwaway profile directory through `XDG_CONFIG_HOME`).
   1. Run `install`.
   2. Start MosAIc and open the MCP page.
@@ -565,7 +562,7 @@ then press Refresh on MosAIc's MCP page and see `distiller` with its two tools.
 ### Status of commit 2 (done 2026-11-13; committed by the maintainer as `d09a609`; step 2.7 was done by commit 3's rig)
 
 Steps 2.1 to 2.6 are done and ticked; the work is in the tree, unstaged. Step 2.7 (the try in a real MosAIc) is **not** done: it needs a
-development build of MosAIc and opens its window on the maintainer's screen (§7.2, question 14).
+development build of MosAIc and opens its window on the maintainer's screen.
 What was checked instead, against MosAIc's source at `7af40c8`: the entry's fields, the path of
 `mcp-plugins.json` and the environment merge.
 
@@ -580,7 +577,7 @@ What was checked instead, against MosAIc's source at `7af40c8`: the entry's fiel
 | REP-5 | every ENG, VAL, SRV and INS case has a test; the pending file holds only MOS and QRK |
 | The lone copy | `server.mjs` with its pack and profiles and no `node_modules` answers (SRV-1) |
 
-Where the work differs from this list (each is in `docs/spec/07-decisions-and-open-questions.md`):
+Where the work differs from this list (each is in the section of `docs/spec/` it concerns):
 - **A bug the server tests found in the engine, fixed in `packages/core`:** a dictionary template
   that a rule always hits (`<use_tool {n}`) made the fake allocator loop for ever. The engine now
   refuses such a template with `INVALID_ARGUMENTS` and ends a run of 10,000 rejected fakes with
@@ -589,7 +586,7 @@ Where the work differs from this list (each is in `docs/spec/07-decisions-and-op
   `StdioClientTransport` hides the stream that SRV-6 must read; an `sdk` mode uses that transport.
 - **The scrub is the entry's first import**, because an ES module body runs after its imports.
 - **Neutralisation keeps the quotes** round `__payment_required`, so JSON stays valid; a segment id
-  of that name comes back changed (question 15).
+  of that name comes back changed.
 - **A global set-up builds the server and the installer** in the local and full tiers
   (`scripts/vitest-global-setup.mjs`); seeded rows have a `tier`.
 - **The installer's choices:** an empty plugins file counts as `[]`; nothing is written when
@@ -611,7 +608,7 @@ All of these must hold before the commit is proposed:
   the harness.
 - [x] `npm run test:local` passes, including SRV-1 to SRV-12 and INS-1 to INS-7.
 - [x] `npm run test:seeded`: every row fails as expected, the new ones included.
-- [x] Step 2.7 done, with its result in the report. Done by MOS-1 in commit 3 (question 14).
+- [x] Step 2.7 done, with its result in the report. Done by MOS-1 in commit 3.
 - [x] The specification sections named for commit 2 are updated.
 
 Proposed subject: `feat(server): add the MCP server and the MosAIc installer`.
@@ -758,6 +755,6 @@ These close stage 1 of §6.4. None is done by an agent.
 2. **MAN-2** (§5.10). On packaged MosAIc for macOS and for Windows, check that `install` gives a
    server that MosAIc starts.
 3. Record both results in `docs/manual-tests.md`. Tick stage 1 as done in §6.4.
-4. Decide the licence and the package name (§7.2, questions 1 and 2) before anything is
-   published.
+4. Add the copyright holder to `LICENSE`'s notice, and choose the GitHub organisation and the
+   scoped package names, before anything is published.
 5. Open the issue of `docs/upstream/example-pr.md` on `mosaic-companion` before its pull request.

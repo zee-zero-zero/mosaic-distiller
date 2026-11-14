@@ -311,9 +311,9 @@ export const mrz_td2: Validator = (matched) => {
 };
 
 /**
- * TD1 (identity cards, three lines of 30): document number, birth date and expiry date. The
- * composite digit is not applied (§3.3.5). A document number longer than nine characters carries
- * `<` in place of its check digit; that field cannot be checked and is accepted.
+ * TD1 (identity cards, three lines of 30): document number, birth date, expiry date and the
+ * composite digit (§3.3.5). A document number longer than nine characters carries `<` in place of
+ * its check digit; that field cannot be checked and is accepted.
  */
 export const mrz_td1: Validator = (matched) => {
   const lines = mrzLines(matched, 3, 30);
@@ -323,7 +323,9 @@ export const mrz_td1: Validator = (matched) => {
   if (l1[14] !== "<" && !mrzCheck(l1.slice(5, 14), l1[14] as string)) return REJECT;
   if (!mrzCheck(l2.slice(0, 6), l2[6] as string)) return REJECT;
   if (!mrzCheck(l2.slice(8, 14), l2[14] as string)) return REJECT;
-  return ACCEPT;
+  // Composite: line 1 positions 6-30, then line 2 positions 1-7, 9-15 and 19-29.
+  const composite = l1.slice(5, 30) + l2.slice(0, 7) + l2.slice(8, 15) + l2.slice(18, 29);
+  return mrzCheck(composite, l2[29] as string) ? ACCEPT : REJECT;
 };
 
 const VIN_TRANSLIT: Readonly<Record<string, number>> = Object.freeze({

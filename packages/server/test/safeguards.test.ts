@@ -357,15 +357,13 @@ describe("SRV-5 the log holds no content", () => {
     expect(() => log.write({ code: "start" })).not.toThrow();
   });
   it("SRV-5 the data directory is the one of §4.6 for each system", () => {
-    expect(dataDirectory({ XDG_DATA_HOME: "/x" }, "linux", "/h")).toBe("/x/mosaic-distiller");
-    expect(dataDirectory({}, "linux", "/h")).toBe("/h/.local/share/mosaic-distiller");
+    expect(dataDirectory({ XDG_DATA_HOME: "/x" }, "linux", "/h")).toBe("/x/ai-distiller");
+    expect(dataDirectory({}, "linux", "/h")).toBe("/h/.local/share/ai-distiller");
     expect(dataDirectory({ XDG_DATA_HOME: "" }, "linux", "/h")).toBe(
-      "/h/.local/share/mosaic-distiller",
+      "/h/.local/share/ai-distiller",
     );
-    expect(dataDirectory({}, "darwin", "/h")).toBe(
-      "/h/Library/Application Support/mosaic-distiller",
-    );
-    expect(dataDirectory({ LOCALAPPDATA: "/L" }, "win32", "/h")).toBe("/L/mosaic-distiller");
+    expect(dataDirectory({}, "darwin", "/h")).toBe("/h/Library/Application Support/ai-distiller");
+    expect(dataDirectory({ LOCALAPPDATA: "/L" }, "win32", "/h")).toBe("/L/ai-distiller");
   });
 });
 
