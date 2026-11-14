@@ -3,10 +3,11 @@
 // per case to conformance/results.jsonl, prints a summary with the number of cases, and exits
 // non-zero on any failure. Run with: node --import tsx scripts/conformance.mjs [--sample|--full]
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createEngine, loadProfile, loadRulePack } from "../packages/core/src/index.ts";
 import { runGoldenCase, runRuleCase } from "../packages/core/src/conformance.ts";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 const lines = (p) =>
   readFileSync(root + p, "utf8")
     .split("\n")

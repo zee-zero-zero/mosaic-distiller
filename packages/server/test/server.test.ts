@@ -368,9 +368,12 @@ describe.skipIf(!canSpawn)("SRV-8 the deadline", () => {
   it("SRV-8 the pool's deadline is 20 seconds, and on the real clock a hung worker is replaced", async () => {
     expect(DEADLINE_MS).toBe(20_000);
     const file = pathToFileURL(join(DIST, "test-entry.mjs")).href;
+    // Only the hung call gets the short deadline: the call after it runs on a replacement worker
+    // that must start and load the engine first, which on a slow machine takes longer than 300 ms.
+    let timers = 0;
     const fast = {
       setTimeout: (f: () => void) => {
-        const h = setTimeout(f, 300);
+        const h = setTimeout(f, timers++ === 0 ? 300 : DEADLINE_MS);
         return h;
       },
       clearTimeout: (h: unknown) => clearTimeout(h as NodeJS.Timeout),

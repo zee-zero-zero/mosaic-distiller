@@ -3,11 +3,12 @@
 // bundle), temporary directories, and a starter that runs the server with a private home, data
 // directory and environment so that a test never touches the real ones.
 import { cpSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { McpHarness, type Entry, type StartOptions } from "@mosaic-distiller/mcp-harness";
 
-export const ROOT = new URL("../../../", import.meta.url).pathname;
+export const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 export const DIST = join(ROOT, "packages/server/dist");
 
 /** True in the local and full tiers, where the server is built and processes may be started. */

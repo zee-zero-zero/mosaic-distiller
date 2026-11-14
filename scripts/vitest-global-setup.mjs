@@ -3,9 +3,10 @@
 // the bundle of the current source, and never a stale one. In the quick tier nothing starts a
 // process and nothing is built.
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 
 export default function setup() {
   const tier = process.env.DISTILLER_TIER;

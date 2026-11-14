@@ -3,10 +3,11 @@
 // profiles/) from packages/server/dist into packages/installer/dist/server/, so that the installer
 // carries the server it installs. Run after the server's build.
 import { build } from "esbuild";
+import { fileURLToPath } from "node:url";
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 const serverDist = join(root, "packages/server/dist");
 const out = join(root, "packages/installer/dist");
 

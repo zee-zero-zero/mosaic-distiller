@@ -2,11 +2,12 @@
 // small test packs built from a few rules (so each mechanism is tested directly and not only
 // through the default pack), and the tier switch (quick, local or full).
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createEngine, loadProfile, loadRulePack } from "../src/index";
 import type { Engine } from "../src/index";
 import type { RulePack } from "../src/types";
 
-export const ROOT = new URL("../../../", import.meta.url).pathname;
+export const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
 export function readJson(rel: string): unknown {
   return JSON.parse(readFileSync(ROOT + rel, "utf8"));

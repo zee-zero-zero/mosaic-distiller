@@ -2,6 +2,7 @@
 // start processes, so they run in the local and full tiers, after the global set-up has built the
 // server and the installer.
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,7 +11,7 @@ import { install } from "../src/install";
 import { dataDir } from "../src/paths";
 import { sandbox, spawnTier } from "./helpers";
 
-const ROOT = new URL("../../../", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const SERVER_DIST = join(ROOT, "packages/server/dist");
 
 function entryOf(plugins: string): {

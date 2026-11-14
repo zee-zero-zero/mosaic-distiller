@@ -3,10 +3,11 @@
 // the test-only entry into dist/test-entry.mjs; copies rulepacks/default.json and profiles/ next
 // to them. The bundle needs no node_modules. Run with no argument from any directory.
 import { build } from "esbuild";
+import { fileURLToPath } from "node:url";
 import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 const dist = join(root, "packages/server/dist");
 
 rmSync(dist, { recursive: true, force: true });

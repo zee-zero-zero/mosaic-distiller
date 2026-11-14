@@ -6,6 +6,7 @@
 // the table to docs/seeded-defects.md. A row whose cases still pass is a test that could never
 // fail, and the script exits non-zero.
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   cpSync,
   existsSync,
@@ -18,7 +19,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 
 /**
  * `tier` is the test tier the cases run in: `quick` by default, `local` for the cases that start

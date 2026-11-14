@@ -4,10 +4,11 @@
 // version is written as a placeholder, so the file is the same on every machine.
 //   npx tsx scripts/golden-regen.ts
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createEngine, loadProfile, loadRulePack } from "../packages/core/src/index";
 import { expandRequest, normalisedResult, type GoldenCase } from "../packages/core/src/conformance";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 const json = (p: string): unknown => JSON.parse(readFileSync(root + p, "utf8"));
 const pack = loadRulePack(json("rulepacks/default.json"));
 const builtIn = ["agent", "document"].map((n) => json(`profiles/${n}.json`));
