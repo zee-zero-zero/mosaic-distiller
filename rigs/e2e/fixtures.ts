@@ -213,11 +213,19 @@ export const test = base.extend<{ mosaic: Mosaic } & Options>({
             writeFileSync(join(data, "jobs.json"), JSON.stringify(jobs));
             const file = join(data, "results", `${id}.json`);
             const limit = Date.now() + timeoutMs;
-            while (!existsSync(file)) {
+            // The add-on's page may have created the file but not finished writing it: an empty
+            // or cut-off text is not a result yet, so read again until it parses.
+            for (;;) {
+              if (existsSync(file)) {
+                try {
+                  return JSON.parse(readFileSync(file, "utf8")) as AddonResult;
+                } catch {
+                  // not complete yet
+                }
+              }
               if (Date.now() > limit) throw new Error(`no result for ${id}`);
               await new Promise((r) => setTimeout(r, 200));
             }
-            return JSON.parse(readFileSync(file, "utf8")) as AddonResult;
           },
         };
       },
