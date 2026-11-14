@@ -92,7 +92,8 @@ describe.skipIf(!spawnTier())("INS-5 the entry starts under MosAIc's conditions"
 
 /** The commands of the README's fenced `sh` blocks that run the installer, in document order. */
 function documentedCommands(): string[][] {
-  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+  // A Windows checkout may have converted the line endings.
+  const readme = readFileSync(join(ROOT, "README.md"), "utf8").replace(/\r\n/g, "\n");
   const section = readme.slice(
     readme.indexOf("## Install into MosAIc"),
     readme.indexOf("## What it does and does not do"),

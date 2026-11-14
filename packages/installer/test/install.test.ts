@@ -117,7 +117,8 @@ describe("install", () => {
     const sb = sandbox();
     run(sb);
     const text = readFileSync(sb.plugins, "utf8");
-    expect(text).toContain(sb.root);
+    // The file is JSON, so a Windows path appears in it with its backslashes doubled.
+    expect(text).toContain(JSON.stringify(sb.root).slice(1, -1));
     for (const p of [dataDir(sb.paths), sb.plugins]) expect(p.startsWith(sb.root)).toBe(true);
   });
 });

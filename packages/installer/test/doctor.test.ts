@@ -70,7 +70,13 @@ describe.skipIf(!spawnTier())("doctor", () => {
 
   it("doctor: a recorded Node that is gone is reported", async () => {
     const sb = installed("good");
-    const text = readFileSync(sb.plugins, "utf8").replace(process.execPath, "/gone/node");
+    // The plugins file is JSON, so a Windows path appears in it with its backslashes doubled.
+    const escaped = (v: string): string => JSON.stringify(v).slice(1, -1);
+    const text = readFileSync(sb.plugins, "utf8").replace(
+      escaped(process.execPath),
+      escaped(join(sb.root, "gone", "node")),
+    );
+    expect(text).not.toContain(escaped(process.execPath));
     write(sb.plugins, text);
     const r = await doctor({ paths: sb.paths, parentEnv: parent(sb) });
     expect(r.exitCode).toBe(1);

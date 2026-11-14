@@ -63,8 +63,8 @@ describe("INS-4 finding Node", () => {
     expect(r.ok && r.path).toBe("/usr/local/bin/node");
     expect(asked).toEqual([
       "/nonexistent/bin/node",
-      "/bin/node",
-      "/usr/bin/node",
+      join("/bin", "node"),
+      join("/usr/bin", "node"),
       "/opt/homebrew/bin/node",
       "/usr/local/bin/node",
     ]);
@@ -104,13 +104,13 @@ describe("INS-4 finding Node", () => {
 
   it("INS-4 a candidate that prints nonsense or fails is skipped", () => {
     const run = (c: string) =>
-      c === "/a/node"
+      c === join("/a", "node")
         ? "hello"
-        : c === "/b/node" || c.startsWith("/nonexistent")
+        : c === join("/b", "node") || c.startsWith("/nonexistent")
           ? null
           : "v20.5.0\n";
     const r = findNode(base({ pathEnv: ["/a", "/b", "/c"].join(delimiter), run }));
-    expect(r.ok && r.path).toBe("/c/node");
+    expect(r.ok && r.path).toBe(join("/c", "node"));
   });
 
   it("INS-4 nvm's default: a number, an alias chain, and 'node'", () => {
@@ -125,7 +125,10 @@ describe("INS-4 finding Node", () => {
       for (const v of ["v18.0.0", "v20.11.0", "v20.2.0"])
         write(join(home, ".nvm", "versions", "node", v, "bin", "node"), "");
       const r = findNode(
-        base({ home, run: (c) => (c.includes(home) ? c.split("/").slice(-3)[0] + "\n" : null) }),
+        base({
+          home,
+          run: (c) => (c.includes(home) ? c.split(/[\\/]/).slice(-3)[0] + "\n" : null),
+        }),
       );
       expect(r.ok && r.path).toBe(
         join(
@@ -151,7 +154,9 @@ describe("INS-4 finding Node", () => {
     expect(asked.some((c) => c.includes("passwd"))).toBe(false);
   });
 
-  describe.skipIf(!spawnTier())("with real scripts", () => {
+  // The stand-ins are `#!/bin/sh` scripts, which Windows cannot run; the injected `run` above
+  // covers the same selection logic there.
+  describe.skipIf(!spawnTier() || process.platform === "win32")("with real scripts", () => {
     it("INS-4 a Node in a directory whose path has spaces is recorded as an absolute path", () => {
       const dir = join(tmp(), "my tools", "node dir");
       const p = fakeNode(dir, "v22.0.0");
