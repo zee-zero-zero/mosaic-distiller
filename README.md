@@ -19,12 +19,54 @@ not decide what is relevant. It is not anonymisation, and must never be describe
 
 ## Status
 
-Stage 1 implemented; manual tests pending (2026-11-13). The engine with its default rule pack,
-profiles and conformance cases; the MCP server with its two tools; the installer that registers
-the server in MosAIc; and the test rigs, which run the server inside a real MosAIc built at a
-pinned commit, are in place and tested. Not yet done: the two manual checks, a real model calling
-the tool (MAN-1) and the installer on packaged MosAIc for macOS and Windows (MAN-2). The specification is in
-[`docs/spec/`](docs/spec/):
+Stage 1 is implemented and its automated tests pass, including the end-to-end tests that run the
+server inside a real MosAIc (2026-11-14).
+
+**Implemented**
+
+- **The engine** (`packages/core`): a rule-based distiller with a default rule pack of 72 rules in
+  57 categories. They cover secrets and API keys, e-mail addresses, North American phone numbers,
+  payment cards, IBANs, crypto addresses, IP and MAC addresses, vehicle identification numbers, postal codes, and
+  national ID, tax and business numbers of more than twenty countries, each checked by its own
+  validator where the issuer defines one. It also flags text that looks like an attempt to instruct
+  an AI, and deletes invisible characters. Rules are listed one by one, with examples, in
+  [`03-detectors.md`](docs/spec/03-detectors.md).
+- **Your own words**: lists of terms (client names, project names, contacts) sent with each request
+  and replaced by numbered fakes such as `Term 1`.
+- **Two profiles**, `agent` and `document`, which decide per category whether a hit is replaced,
+  only flagged, or neutralised.
+- **The MCP server** (`packages/server`) with two tools, `distill` and `capabilities`, over stdio,
+  with its safeguards: scrubbed environment, a deadline per call, no content in logs.
+- **The installer** (`packages/installer`): `install`, `doctor` and `uninstall` for MosAIc.
+- **The test rigs**: a stdio harness, a scripted fake model, and a real MosAIc built at a pinned
+  commit and driven by Playwright.
+
+**Not done**
+
+- **Summarising.** See the next section.
+- **Two manual checks**: a real model calling the tool (MAN-1), and the installer on packaged
+  MosAIc for macOS and Windows (MAN-2).
+- **Phone numbers outside North America**, and names that are not on your list. Both are left out
+  on purpose; the reasons are in [`03-detectors.md`](docs/spec/03-detectors.md) §3.6 and in the open
+  questions of [`07-decisions-and-open-questions.md`](docs/spec/07-decisions-and-open-questions.md).
+- A published package and a licence. The installer works from a clone of this repository.
+
+## Summarising is not done
+
+The distiller has one mode, `rules`. A second mode that summarises text with a language model, so
+that less is passed on and not only a cleaned copy, is **not built, and not specified**.
+
+The reason is that it is not yet clear where the distiller would get access to a model. It runs on
+the user's machine with no network access and no keys: the server deletes every provider key that
+MosAIc passes it, on purpose. A summariser needs a model API to call, and that decision has not been
+made. **We are waiting for an LLM API before we do the summarising part.**
+
+What exists is only room in the interface. `distill` already accepts `mode` and `objective`
+(`store`, `forward` or `task`), but `mode` accepts only `rules`, anything else is refused with
+`UNSUPPORTED_MODE`, and `objective` changes nothing in the output. Nothing in the repository calls
+a model.
+
+The specification is in [`docs/spec/`](docs/spec/):
 
 | File | What it covers |
 |---|---|
@@ -142,6 +184,114 @@ those two variables, if set, still act on the server before it can scrub them.
 - The server deletes every environment variable it does not need at start, so it never holds the
   provider keys that MosAIc passes to every server. It writes a log that holds only codes and
   numbers, never text. It has no network access.
+
+## See it run
+
+**In MosAIc.** After `install` and a Refresh, open the MCP page: `distiller` is listed with its two
+tools, and you can call `distill` from there with a `text` argument. Or ask a chat agent to
+distil a text; it sees the tool's description and calls it. Either way the result is JSON with the
+`distillate`, the list of `removals` (category, rule, position and the fake that replaced the
+value, never the value) and `findings`.
+
+**Without MosAIc.** The server speaks MCP over stdio, so any MCP client can start it. After
+`npm run build`, this sends one request by hand:
+
+```sh
+cd packages/server/dist
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"distill","arguments":{"text":"Mail jane.doe@northwind-mail.com"}}}' \
+  | XDG_DATA_HOME=$(mktemp -d) node server.mjs
+```
+
+The second line of output holds the distillate `Mail person1@example.com`. (`XDG_DATA_HOME`
+keeps the log out of your real data directory.)
+
+**As a library.** See the next section.
+
+**The tests.** `npm run test:quick` takes about a minute; `npm run test:local` also starts the real
+server and installer; `npm run test:e2e` runs a real MosAIc and needs a display (or `xvfb-run`).
+[`AGENTS.md`](AGENTS.md) lists every command.
+
+## Turning distillation on and off
+
+There is no on/off switch inside the server: it distils every call it gets. What you control is
+which categories are replaced, and whether the server is connected at all.
+
+| To do this | Do this |
+|---|---|
+| Stop MosAIc using the distiller | `uninstall`, or remove the `distiller` entry on MosAIc's MCP page. `install` brings it back. |
+| Distil text about prompts and chats without its role labels and template tokens being treated as attacks | Pass `"profile": "document"` in the call. The default is `agent`. |
+| Add your own sensitive words for one call | Pass `dictionaries`: `[{"name": "clients", "terms": ["Northwind"]}]`. Names are 1 to 32 characters of `[a-z0-9_]`, and a term needs at least two characters. |
+| Keep a category in the text, but have it reported | Edit the profile (below): set the category to `flag`. The text is unchanged and the hit is in `findings`. |
+| Turn a category off completely | Delete its rule from `rulepacks/default.json` (below). No profile action means "ignore". |
+
+**Changing a profile.** A profile is a small file, `profiles/agent.json` or `profiles/document.json`,
+that maps a category (`network.ipv4`) or a category with a variant (`network.ipv4/private`) to an
+action: `redact` (replace with a fake), `flag` (keep and report), `neutralise` (replace with
+`[neutralised: <category>]`) or `block` (refuse the whole request). A category the profile does not
+name keeps its rule's own action. So this keeps e-mail addresses in the text of the `document`
+profile and still reports them:
+
+```json
+{"format": "profile/1", "name": "document", "actions": {"contact.email": "flag"}}
+```
+
+(Add that key to the `actions` that the file already has; do not replace them.) A category must be
+declared in the rule pack, and a value must be one of the four actions, or the server refuses to
+start. The server reads profiles at start, so rebuild, run `install` again, and Refresh. Be careful
+with `flag` on a `secret.*` or personal-data category: the value then goes on, unchanged.
+
+A new profile *name* is not yet possible without a code change, because the tool's `profile`
+argument lists the two built-in names (`packages/server/src/tools.ts`, §4.2).
+
+## Adding detectors
+
+Three levels, from cheapest to most work.
+
+**1. Your own words, per call.** Pass `dictionaries` as above. No change to the repository.
+
+**2. A rule in the rule pack.** A rule is data in `rulepacks/default.json`; no code changes. Two
+kinds exist: a `terms` rule (a fixed list of words that always applies) and a `pattern` rule. This
+one finds employee numbers written `EMP-` and six digits, and replaces each with a shape-preserving
+fake (`XXX-000001`):
+
+```json
+"categories": { "org_id.employee": { "class": "medium", "surrogate": "shape" } }
+```
+```json
+{"id": "org_id.employee", "category": "org_id.employee", "kind": "pattern",
+ "pattern": "EMP-[0-9]{6}", "flags": "", "edges": "word", "validators": [], "action": "redact"}
+```
+
+The first goes in the pack's `categories`, the second in its `rules`. A pattern is limited to a
+portable subset so that every engine reads it the same way and hostile input stays fast: ASCII
+character classes only (`[0-9]`, never `\d`), every repetition bounded (`{1,9}`, never `*` or `+`),
+no lookaround or backreferences, and at most one capture group, whose text is the part that is
+replaced. `edges` says what may not touch the match (`word`, `numeric`, `word_before`,
+`word_colon`, `none`). `validators` name checks from a fixed list, such as `luhn`, that a match must
+also pass. [`02-engine.md`](docs/spec/02-engine.md) §2.2 and §2.4 give the rules in full; a pack
+that breaks one is refused, with a code, when the server starts.
+
+Then, in the same commit, because the specification is authoritative:
+1. Describe the rule in [`03-detectors.md`](docs/spec/03-detectors.md), with examples it must hit,
+   examples it must not hit, and its residual risk. Precision comes first: a rule is included only
+   if a match is close to certain from the value alone (§3.1).
+2. Add those examples to `conformance/rules.jsonl`, and run `npm run conformance`.
+3. Run `npm run test:quick`. Tests that record the rule pack's hash or the golden results will fail
+   until you regenerate `conformance/golden.jsonl` with `npx tsx scripts/golden-regen.ts` and read
+   the difference against the specification.
+4. `npm run build`, then `install` again, then Refresh. The installer copies the rule pack next to
+   the server, and the server loads it at start.
+
+Use only invented or documentation-range values in examples and tests, never real personal data.
+
+**3. A new validator (a checksum or a structural check).** A validator is code: add it under
+`packages/core/src/validators/`, register it in `index.ts`, describe it in
+[`03-detectors.md`](docs/spec/03-detectors.md) §3.5, and test it with valid and invalid values
+(`05-testing.md`). A validator must not read the clock, the locale or the machine, so that the
+output stays the same everywhere.
 
 ## Toolchain
 
