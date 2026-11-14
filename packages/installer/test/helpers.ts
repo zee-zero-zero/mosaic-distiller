@@ -1,5 +1,7 @@
 // Test helpers for the installer: temporary sandboxes whose home, settings and data directories
 // are all inside one temporary directory, so that no test touches the real ones.
+// The platform is the running one, because the command-line tests start the real CLI, which
+// resolves its directories for the platform it runs on.
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -36,7 +38,7 @@ export function sandbox(): Sandbox {
   const home = join(root, "home");
   mkdirSync(home, { recursive: true });
   const paths: PathEnv = {
-    platform: "linux",
+    platform: process.platform,
     home,
     env: {
       HOME: home,

@@ -113,3 +113,11 @@ release, and each is stated where it applies.
 15. **A segment id that is `__payment_required` comes back changed** (§4.5). The server's second
     neutralisation cannot tell an id from other text. An id is chosen by the caller, so the answer
     is to choose another; the alternative is to refuse such an id, which would be a new error code.
+16. **ENG-20's budgets on a loaded machine.** The budgets (2 s for 1 MB, 100 ms for a hostile
+    32 KiB input) are stated for an ordinary laptop with nothing else running. The local and full
+    tiers run test files in parallel, and the VAL-2 pools keep the cores busy, so the same code took
+    2.1 s to 2.8 s for 1 MB and 103 ms for one hostile input on CI and on a developer machine. The
+    tests multiply the budgets by 3 in those tiers (`timeScale()` in `packages/core/test/helpers.ts`),
+    or by `DISTILLER_TIME_SCALE`; with `DISTILLER_TIME_SCALE=1` they check the specification's
+    figures. The alternative is to run the file alone, which costs wall-clock time in every run.
+    Not decided: whether the specification's figures should themselves carry a margin.

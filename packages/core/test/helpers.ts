@@ -23,6 +23,18 @@ export function isFullTier(): boolean {
   return tier() !== "quick";
 }
 
+/**
+ * The allowance applied to ENG-20's time budgets: 1 in the quick tier, 3 in the local and full
+ * tiers (their files run in parallel, and the heavy pools share the cores), or the value of
+ * `DISTILLER_TIME_SCALE`. `DISTILLER_TIME_SCALE=1 npx vitest run -t "ENG-20"` checks the budgets
+ * as the specification states them.
+ */
+export function timeScale(): number {
+  const v = Number(process.env.DISTILLER_TIME_SCALE);
+  if (Number.isFinite(v) && v > 0) return v;
+  return isFullTier() ? 3 : 1;
+}
+
 let cached: { pack: RulePack; engines: Map<string, Engine> } | undefined;
 
 function defaults(): { pack: RulePack; engines: Map<string, Engine> } {

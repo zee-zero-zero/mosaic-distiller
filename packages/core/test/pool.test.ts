@@ -13,6 +13,7 @@ import {
   isFullTier,
   readJson,
   smallEngine,
+  timeScale,
 } from "./helpers";
 import { loadRuleCases } from "./pack.test";
 import {
@@ -242,7 +243,7 @@ function denseText(bytes: number): string {
 
 describe("ENG-20 large and hostile input stays fast", () => {
   const big = isFullTier() ? 1_048_576 : 65_536;
-  const bigBudget = isFullTier() ? 2000 : 600;
+  const bigBudget = (isFullTier() ? 2000 : 600) * timeScale();
   it(`${big} bytes dense with matches finish in under ${bigBudget} ms`, () => {
     const text = denseText(big);
     const { ms, value: r } = bestMs(() => engine.distill({ segments: [{ id: "1", text }] }) as any);
@@ -256,7 +257,7 @@ describe("ENG-20 large and hostile input stays fast", () => {
       .slice(0, big);
     const { ms, value: r } = bestMs(() => engine.distill({ segments: [{ id: "1", text }] }) as any);
     expect(r.removals).toEqual([]);
-    expect(ms).toBeLessThan(isFullTier() ? 2000 : 600);
+    expect(ms).toBeLessThan((isFullTier() ? 2000 : 600) * timeScale());
   });
   const hostileSize = 32_768; // 32 KiB at every tier (§5.3)
   const rules = loadRuleCases().filter((c) => c.expect === "hit");
@@ -279,7 +280,9 @@ describe("ENG-20 large and hostile input stays fast", () => {
       for (const text of inputs) {
         const view = buildScanView(text);
         const { ms } = bestMs(() => scanPatternRule(rule, view, null));
-        expect(ms, `${rule.id} on ${JSON.stringify(text.slice(0, 30))}`).toBeLessThan(100);
+        expect(ms, `${rule.id} on ${JSON.stringify(text.slice(0, 30))}`).toBeLessThan(
+          100 * timeScale(),
+        );
       }
     });
   }
